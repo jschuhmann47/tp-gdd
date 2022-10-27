@@ -278,3 +278,30 @@ CREATE TABLE [MEDIO_ENVIO_X_CODIGO_POSTAL] (
     FOREIGN KEY ([CODIGO_POSTAL])
       REFERENCES [CODIGO_POSTAL]([CODIGO_POSTAL])
 );
+
+CREATE PROCEDURE insertar_proveedor
+AS
+BEGIN
+	DECLARE @cuit nvarchar(255),@domicilio nvarchar(255),@codPostal decimal(19,0),@razonSocial nvarchar(255),@mail nvarchar(255),@provincia nvarchar(255),@localidad nvarchar(255)
+	DECLARE @cursor CURSOR FOR SELECT DISTINCT PROVEEDOR_CUIT,PROVEEDOR_DOMICILIO,PROVEEDOR_CODIGO_POSTAL,PROVEEDOR_RAZON_SOCIAL,
+								PROVEEDOR_MAIL,PROVEEDOR_PROVINCIA, PROVEEDOR_LOCALIDAD
+								FROM gd_esquema.Maestra WHERE PROVEEDOR_CUIT IS NOT NULL
+	OPEN @cursor
+	FETCH NEXT FROM	@cursor INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.Maestra WHERE PROVEEDOR_CODIGO_POSTAL = @codPostal) --tmb el de cliente?
+		BEGIN
+			INSERT INTO provincia (nombre_prov)
+			VALUES (@provincia)
+			INSERT INTO codigo_postal (codigo_provincia)
+			VALUES (SELECT codigo_provincia WHERE nombre_prov = @provincia)
+		END
+		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
+		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia)
+		FETCH NEXT FROM	@cursor INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
+	END
+	CLOSE @cursor
+	DEALLOCATE @cursor
+END
+
