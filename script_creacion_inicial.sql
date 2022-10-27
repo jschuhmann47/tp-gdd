@@ -305,3 +305,43 @@ BEGIN
 	DEALLOCATE @cursor
 END
 
+
+CREATE PROCEDURE insertar_productos
+AS
+BEGIN
+	INSERT INTO producto (cod_prod,nombre_prod,descripcion_prod,marca_prod,categoria_prod,material_prod)
+	SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
+	FROM gd_esquema.Maestra
+	WHERE PRODUCTO_CODIGO IS NOT NULL
+END
+
+CREATE PROCEDURE insertar_canales_venta
+AS
+BEGIN
+	INSERT INTO canal_venta (canal_venta,canal_costo)
+	SELECT DISTINCT VENTA_CANAL,VENTA_CANAL_COSTO 
+	FROM gd_esquema.Maestra
+	WHERE VENTA_CANAL IS NOT NULL --generar la tabla de nuevo, nos falto el costo
+END
+
+CREATE PROCEDURE insertar_variantes
+AS
+BEGIN
+	DECLARE @variante nvarchar(50),@tipo nvarchar(50),@codigo nvarchar(50)
+	DECLARE @cursor CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE_CODIGO 
+								FROM gd_esquema.Maestra
+								WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
+	OPEN @cursor
+	FETCH NEXT FROM @cursor INTO @variante,@tipo,@codigo
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+		INSERT INTO tipo_variante (codigo_tipo_var,descripcion_tipo_var)
+		VALUES (@codigo,@tipo)
+		INSERT INTO variante (codigo_tipo_var,valor)
+		VALUES (@codigo,@variante)
+		FETCH NEXT FROM @cursor INTO @variante,@tipo,@codigo
+	END
+	CLOSE @cursor
+	DEALLOCATE @cursor
+END
+
