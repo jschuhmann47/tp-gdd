@@ -290,16 +290,18 @@ BEGIN
 	FETCH NEXT FROM	@cursor INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
-		IF NOT EXISTS (SELECT 1 FROM gd_esquema.Maestra WHERE PROVEEDOR_CODIGO_POSTAL = @codPostal) --tmb el de cliente?
+		DECLARE @codProvincia decimal(19,0)
+		IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
 		BEGIN
 			INSERT INTO provincia (nombre_prov)
 			VALUES (@provincia)
 			INSERT INTO codigo_postal (codigo_provincia)
-			VALUES (SELECT codigo_provincia WHERE nombre_prov = @provincia)
+			SELECT @codProvincia = codigo_provincia WHERE nombre_prov = @provincia
 		END
+		SELECT @codProvincia = codigo_provincia WHERE nombre_prov = @provincia
 		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
-		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia)
-		FETCH NEXT FROM	@cursor INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
+		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@codProvincia)
+		FETCH NEXT FROM	@cursor INTO @cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia
 	END
 	CLOSE @cursor
 	DEALLOCATE @cursor
@@ -345,3 +347,48 @@ BEGIN
 	DEALLOCATE @cursor
 END
 
+CREATE PROCEDURE insertar_clientes
+AS
+BEGIN
+	DECLARE @nombre nvarchar(255),@apellido nvarchar(255),@dni decimal(18,0),@direccion nvarchar(255),@telefono decimal(18,0),@mail nvarchar(255),@fechaNacimiento date,@localidad nvarchar(255),@codPostal decimal(19,0),@provincia nvarchar(255)
+	DECLARE @cursor CURSOR FOR 
+		(SELECT DISTINCT CLIENTE_NOMBRE,CLIENTE_APELLIDO,CLIENTE_DNI,CLIENTE_DIRECCION,CLIENTE_TELEFONO,
+		CLIENTE_MAIL, CLIENTE_FECHA_NAC,CLIENTE_LOCALIDAD, CLIENTE_CODIGO_POSTAL, CLIENTE_PROVINCIA  
+		FROM gd_esquema.Maestra
+		WHERE CLIENTE_DNI IS NOT NULL)
+	OPEN @cursor
+	FETCH NEXT FROM @cursor INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+		DECLARE @codProvincia decimal(19,0)
+		IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
+		BEGIN
+			INSERT INTO provincia (nombre_prov)
+			VALUES (@provincia)
+			INSERT INTO codigo_postal (codigo_provincia)
+			SELECT codigo_provincia WHERE nombre_prov = @provincia --distinct?
+		END
+		SELECT @codProvincia = codigo_provincia WHERE nombre_prov = @provincia
+		INSERT INTO cliente (nombre_cliente,apellido_cliente,dni_cliente,direccion_cliente,telefono_cliente,mail_cliente,fecha_nac_cliente,localidad_cliente,codigo_postal,codigo_provincia)
+		VALUES (@nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@codProvincia)
+		FETCH NEXT FROM @cursor INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
+	END
+	CLOSE @cursor
+	DEALLOCATE @cursor
+END
+
+CREATE PROCEDURE insertar_descuentos_compra
+AS
+BEGIN
+	INSERT INTO DESCUENTO_COMPRA (codigo_desc_compra,porcentaje_desc_compra,'Descuento por compra')
+	SELECT DISTINCT DESCUENTO_COMPRA_CODIGO,DESCUENTO_COMPRA_VALOR 
+	FROM gd_esquema.Maestra WHERE DESCUENTO_COMPRA_CODIGO IS NOT NULL
+END
+
+CREATE PROCEDURE insertar_descuentos_medio_pago
+AS
+BEGIN
+	INSERT INTO DESCUENTO_MEDIO_PAGO (codigo_desc_mp,monto_descuento)
+	SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_MEDIO_PAGO_COSTO 
+	FROM gd_esquema.Maestra WHERE VENTA_MEDIO_PAGO IS NOT NULL
+END
