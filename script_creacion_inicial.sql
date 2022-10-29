@@ -388,7 +388,56 @@ END
 CREATE PROCEDURE insertar_descuentos_medio_pago
 AS
 BEGIN
-	INSERT INTO DESCUENTO_MEDIO_PAGO (codigo_desc_mp,monto_descuento)
-	SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_MEDIO_PAGO_COSTO 
+	INSERT INTO DESCUENTO_MEDIO_PAGO (codigo_desc_mp,monto_descuento,concepto??)
+	SELECT DISTINCT codigo??,VENTA_DESCUENTO_IMPORTE,VENTA_DESCUENTO_CONCEPTO
 	FROM gd_esquema.Maestra WHERE VENTA_MEDIO_PAGO IS NOT NULL
+END
+
+CREATE PROCEDURE insertar_medio_envio
+AS
+BEGIN
+	INSERT INTO MEDIO_ENVIO (medio)
+	SELECT DISTINCT VENTA_MEDIO_ENVIO 
+	FROM gd_esquema.Maestra WHERE VENTA_MEDIO_ENVIO IS NOT NULL
+END
+
+--averiguar como obtener el medio envio y precio desde la venta. como saber el precio del envio desde venta
+
+CREATE PROCEDURE insertar_descuentos_cupon
+AS
+BEGIN
+	INSERT INTO DESCUENTO_CUPON (codigo_cupon,valor_desc,fecha_desde,fecha_hasta)
+	SELECT DISTINCT VENTA_CUPON_CODIGO,VENTA_CUPON_VALOR,VENTA_CUPON_FECHA_DESDE,VENTA_CUPON_FECHA_HASTA 
+	FROM gd_esquema.Maestra WHERE VENTA_CUPON_CODIGO IS NOT NULL
+END
+
+CREATE PROCEDURE insertar_descuentos_fijo
+AS
+BEGIN
+	--todo
+END
+
+CREATE PROCEDURE insertar_compras
+AS
+BEGIN
+	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@total decimal(18,2),@cuit nvarchar(50),@codDescuentoCompra decimal(19,0)
+	DECLARE @cursor CURSOR FOR 
+	SELECT DISTINCT COMPRA_NUMERO,COMPRA_FECHA,COMPRA_MEDIO_PAGO,COMPRA_TOTAL,PROVEEDOR_CUIT,DESCUENTO_COMPRA_CODIGO 
+	FROM gd_esquema.Maestra WHERE COMPRA_NUMERO IS NOT NULL
+	OPEN @cursor
+	FETCH @cursor INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra
+	WHILE(@@FETCH_STATUS = 0)
+	BEGIN
+		DECLARE @totalCompra decimal(18,2)
+		INSERT INTO COMPRA_PRODUCTO
+		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO, @totalCompra = (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) precio_total, @codCompra,codProdVariante(TODO) 
+		FROM gd_esquema.Maestra
+		WHERE COMPRA_NUMERO = @codCompra
+
+		INSERT INTO compra
+		VALUES (@codCompra,@fecha,medioPagocodigo(TODO),@totalCompra,@cuit,@codDescuentoCompra)
+		FETCH @cursor INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra
+	END
+	CLOSE @cursor
+	DEALLOCATE @cursor
 END
