@@ -441,3 +441,48 @@ BEGIN
 	CLOSE @cursor
 	DEALLOCATE @cursor
 END
+
+CREATE PROCEDURE insertar_medios_de_pago
+AS
+BEGIN
+  INSERT INTO MEDIO_DE_PAGO (medio_pago,valor_desc,COSTO_TRANSACCION,codigo_desc_mp)
+  SELECT DISTINCT VENTA_MEDIO_PAGO,0(TODO el valor descuento mp),VENTA_MEDIO_PAGO_COSTO,0(TODO el codigo de desc mp)
+  FROM gd_esquema.Maestra
+  WHERE VENTA_MEDIO_PAGO IS NOT NULL
+END
+
+CREATE PROCEDURE insertar_producto_variante
+AS
+BEGIN
+  DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50),@precioVenta decimal(18,2)
+  DECLARE @cursor CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION,VENTA_PRODUCTO_PRECIO
+  FROM gd_esquema.Maestra WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
+  OPEN @cursor
+  FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion,@precioVenta
+  WHILE (@@FETCH_STATUS = 0)
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM PRODUCTO_VARIANTE WHERE codigo_var = @prodVarianteCod)
+    BEGIN
+      INSERT INTO PRODUCTO_VARIANTE (codigo_var,cod_prod,cod_producto_variante,stock,descripcion,precio_unitario_prod)
+      VALUES (id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion,@precioVenta) 
+      FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion,@precioVenta
+    END
+    ELSE
+    BEGIN
+      UPDATE PRODUCTO_VARIANTE
+      SET stock += @stock
+      WHERE codigo_var = @prodVarianteCod
+    END
+  CLOSE @cursor
+  DEALLOCATE @cursor
+END
+
+CREATE FUNCTION id_producto_variante(@variante nvarchar(50),@tipoVariante nvarchar(50))
+RETURNS nvarchar(50)
+AS
+BEGIN
+  DECLARE @id nvarchar(50)
+  SELECT @id=codigo_var FROM VARIANTE
+  WHERE valor = @valor AND (SELECT codigo_tipo_var FROM TIPO_VARIANTE WHERE descripcion_tipo_var = @tipo) = codigo_tipo_var --chequear esto, yo lo pense como que te deuvelve un solo registro, tal vez asi no es la sintaxis 
+  RETURN @id
+END
