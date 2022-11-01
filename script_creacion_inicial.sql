@@ -436,6 +436,11 @@ BEGIN
 
 		INSERT INTO compra
 		VALUES (@codCompra,@fecha,medioPagocodigo(TODO),@totalCompra,@cuit,@codDescuentoCompra)
+
+		INSERT INTO DESCUENTO_X_COMPRA (cod_compra,codigo_desc_compra)
+		VALUES (@codCompra,@codDescuentoCompra)
+
+
 		FETCH @cursor INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra
 	END
 	CLOSE @cursor
@@ -485,4 +490,35 @@ BEGIN
   SELECT @id=codigo_var FROM VARIANTE
   WHERE valor = @valor AND (SELECT codigo_tipo_var FROM TIPO_VARIANTE WHERE descripcion_tipo_var = @tipo) = codigo_tipo_var --chequear esto, yo lo pense como que te deuvelve un solo registro, tal vez asi no es la sintaxis 
   RETURN @id
+END
+
+CREATE PROCEDURE insertar_compra_producto
+AS
+BEGIN
+	INSERT INTO COMPRA_PRODUCTO (cod_compra,cod_producto_variante,cantidad,precio_unit,precio_total)
+	SELECT COMPRA_NUMERO,PRODUCTO_VARIANTE_CODIGO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL
+	FROM gd_esquema.Maestra
+	WHERE COMPRA_NUMERO IS NOT NULL AND PRODUCTO_VARIANTE_CODIGO IS NOT NULL
+	GROUP BY COMPRA_NUMERO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,PRODUCTO_VARIANTE_CODIGO
+	--hacerlo asi en base a la maestra o en base a nuestras tablas?
+END
+
+CREATE PROCEDURE insertar_venta_producto
+AS
+BEGIN
+	INSERT INTO VENTA_PRODUCTO (cod_venta,cod_producto_variante,cantidad,precio_unit,precio_total)
+	SELECT VENTA_CODIGO,PRODUCTO_VARIANTE_CODIGO,VENTA_PRODUCTO_CANTIDAD,VENTA_PRODUCTO_PRECIO,SUM(VENTA_PRODUCTO_CANTIDAD*VENTA_PRODUCTO_PRECIO) PRECIO_TOTAL
+	FROM gd_esquema.Maestra
+	WHERE VENTA_CODIGO IS NOT NULL AND PRODUCTO_VARIANTE_CODIGO IS NOT NULL
+	GROUP BY VENTA_CODIGO,PRODUCTO_VARIANTE_CODIGO,VENTA_PRODUCTO_CANTIDAD,VENTA_PRODUCTO_PRECIO
+END
+
+CREATE PROCEDURE insertar_ventas
+AS
+BEGIN
+	--aca insertar ventas, y sus descuentos TODO
+	--SELECT DISTINCT VENTA_CODIGO,VENTA_FECHA,CLIENTE_DNI,VENTA_CUPON_CODIGO,VENTA_TOTAL,VENTA_ENVIO_PRECIO
+	--FROM gd_esquema.Maestra
+	--WHERE VENTA_CODIGO IS NOT NULL
+	--ORDER BY VENTA_CODIGO
 END
