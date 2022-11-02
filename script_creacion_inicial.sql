@@ -291,38 +291,6 @@ END
 
 CREATE PROCEDURE insertar_productos
 AS
-CREATE PROCEDURE insertar_proveedor
-AS
-BEGIN
-	DECLARE @cuit nvarchar(255),@domicilio nvarchar(255),@codPostal decimal(19,0),@razonSocial nvarchar(255),@mail nvarchar(255),@provincia nvarchar(255),@localidad nvarchar(255)
-	DECLARE cursorc CURSOR FOR (SELECT DISTINCT PROVEEDOR_CUIT,PROVEEDOR_DOMICILIO,PROVEEDOR_CODIGO_POSTAL,PROVEEDOR_RAZON_SOCIAL,
-								PROVEEDOR_MAIL,PROVEEDOR_PROVINCIA, PROVEEDOR_LOCALIDAD
-								FROM gd_esquema.Maestra WHERE PROVEEDOR_CUIT IS NOT NULL)
-	OPEN cursorc
-	FETCH NEXT FROM	cursorc INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
-	WHILE (@@FETCH_STATUS = 0)
-	BEGIN
-		DECLARE @codProvincia decimal(19,0)
-		IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
-		BEGIN
-			INSERT INTO provincia (nombre_prov)
-			VALUES (@provincia)
-			INSERT INTO codigo_postal (codigo_provincia)
-			SELECT   codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
-			SELECT @codProvincia =  codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
-		END
-		SELECT @codProvincia = codigo_provincia FROM provincia WHERE nombre_prov = @provincia 
-		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
-		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@codProvincia)
-		FETCH NEXT FROM	cursorc INTO @cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia
-	END
-	CLOSE cursorc
-	DEALLOCATE cursorc
-END
-
-
-CREATE PROCEDURE insertar_productos
-AS
 BEGIN
 	INSERT INTO producto (cod_prod,nombre_prod,descripcion_prod,marca_prod,categoria_prod,material_prod)
 	SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
