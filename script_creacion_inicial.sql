@@ -1,12 +1,13 @@
 
 CREATE TABLE  [MEDIO_DE_PAGO] (
-  [ID_MEDIO_PAGO] decimal(19,0),
+  [ID_MEDIO_PAGO] decimal(19,0) IDENTITY (1,1),
   [MEDIO_PAGO] nvarchar(255),
   [VALOR_DESC] decimal(18,2),
   [COSTO_TRANSACCION] decimal(18,2),
   [CODIGO_DESC_MP] decimal(19,0),
-  PRIMARY KEY ([ID_MEDIO_PAGO])
+   PRIMARY KEY  ([ID_MEDIO_PAGO])
 );
+
 
 CREATE TABLE [COMPRA] (
   [COD_COMPRA] decimal(19,0),
@@ -19,7 +20,7 @@ CREATE TABLE [COMPRA] (
 );
 
 CREATE TABLE [PROVINCIA] (
-  [CODIGO_PROVINCIA] decimal(19,0),
+  [CODIGO_PROVINCIA] decimal(19,0) IDENTITY (1,1),
   [NOMBRE_PROV] nvarchar(255),
   PRIMARY KEY ([CODIGO_PROVINCIA])
 );
@@ -45,7 +46,7 @@ CREATE TABLE [PROVEEDOR] (
 );
 
 CREATE TABLE [CLIENTE] (
-  [ID_CLIENTE] decimal(19,0),
+  [ID_CLIENTE] decimal(19,0) IDENTITY (1,1),
   [NOMBRE_CLIENTE] nvarchar(255),
   [APELLIDO_CLIENTE] nvarchar(255),
   [DNI_CLIENTE] decimal(18,0),
@@ -60,14 +61,14 @@ CREATE TABLE [CLIENTE] (
 );
 
 CREATE TABLE [DESCUENTO_COMPRA] (
-  [CODIGO_DESC_COMPRA] decimal(18,2),
+  [CODIGO_DESC_COMPRA] decimal(19,0) IDENTITY (1,1),
   [MONTO_DESC_COMPRA] decimal(19,0),
   PRIMARY KEY ([CODIGO_DESC_COMPRA])
 );
 
 
 CREATE TABLE [DESCUENTO_MEDIO_PAGO] (
-  [CODIGO_DESC_MP] DECIMAL(19,0),
+  [CODIGO_DESC_MP] DECIMAL(19,0) IDENTITY (1,1),
   [PORCENTAJE_DESCUENTO] decimal(18,2),
   PRIMARY KEY ([CODIGO_DESC_MP])
 );
@@ -104,7 +105,7 @@ CREATE TABLE [VENTA_MEDIANTE_DESCUENTO_FIJO] (
 );
 
 CREATE TABLE [CANAL_VENTA] (
-  [ID_CANAL_VENTA] decimal(19,0),
+  [ID_CANAL_VENTA] decimal(19,0) IDENTITY (1,1),
   [CANAL_VENTA] nvarchar(255),
   [CANAL_COSTO] decimal(19,0),
   PRIMARY KEY ([ID_CANAL_VENTA])
@@ -132,7 +133,7 @@ CREATE TABLE [VENTA_PRODUCTO] (
 
 
 CREATE TABLE [DESCUENTO_FIJO] (
-  [CODIGO_DESCUENTO] decimal(19,0),
+  [CODIGO_DESCUENTO] decimal(19,0) IDENTITY (1,1),
   [COD_VENTA] decimal(18,2),
   [TIPO_DESC] nvarchar(255),
   [VALOR_DESC] decimal(18,2),
@@ -189,7 +190,7 @@ CREATE TABLE [DESCUENTO_X_MEDIO_DE_PAGO] (
 
 
 CREATE TABLE [MEDIO_ENVIO_X_CODIGO_POSTAL] (
-  [ID_MEDIO_ENVIO] decimal(19,0),
+  [ID_MEDIO_ENVIO] decimal(19,0) IDENTITY (1,1),
   [CODIGO_POSTAL] decimal(19,0),
   [TIEMPO_EST] decimal(18,2),
   [PRECIO] decimal(18,2),
@@ -274,23 +275,29 @@ BEGIN
 	FETCH NEXT FROM	cursorc INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
-		DECLARE @codProvincia decimal(19,0)
-		IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
+	DECLARE @codProvincia decimal(19,0)
+		IF NOT EXISTS (SELECT 1 FROM provincia WHERE NOMBRE_PROV = @codPostal)
 		BEGIN
 			INSERT INTO provincia (nombre_prov)
 			VALUES (@provincia)
-			INSERT INTO codigo_postal (codigo_provincia)
-			SELECT   codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
-			SELECT @codProvincia =  codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
-		END
+      IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal)
+      BEGIN
+        INSERT INTO codigo_postal (codigo_provincia)
+        SELECT codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia
+      END
+		END	
 		SELECT @codProvincia = codigo_provincia FROM provincia WHERE nombre_prov = @provincia 
 		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
 		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@codProvincia)
-		FETCH NEXT FROM	cursorc INTO @cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia
+		FETCH NEXT FROM	cursorc INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
 	END
 	CLOSE cursorc
 	DEALLOCATE cursorc
 END
+exec insertar_proveedor 
+
+DROP  PROCEDURE insertar_proveedor
+
 
 
 CREATE PROCEDURE insertar_productos
