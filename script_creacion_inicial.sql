@@ -202,7 +202,6 @@ CREATE TABLE [DESCUENTO_FIJO] (
 CREATE TABLE [PRODUCTO_VARIANTE] (
   [CODIGO_VAR] nvarchar(50),
   [COD_PROD] nvarchar(50),
-  [PRECIO_UNITARIO_PROD] decimal(18,2),
   [COD_PRODUCTO_VARIANTE] nvarchar(50),
   [STOCK] decimal(19,0),
   [DESCRIPCION] nvarchar(50),
@@ -313,7 +312,7 @@ CREATE TABLE [MEDIO_ENVIO_X_CODIGO_POSTAL] (
   [TIEMPO_EST] decimal(18,2),
   [PRECIO] decimal(18,2),
   [MEDIO] nvarchar(255),
-  PRIMARY KEY ([ID_MEDIO_ENVIO]),
+  PRIMARY KEY ([ID_MEDIO_ENVIO],[CODIGO_POSTAL]),
   CONSTRAINT [FK_MEDIO_ENVIO_X_CODIGO_POSTAL.CODIGO_POSTAL]
     FOREIGN KEY ([CODIGO_POSTAL])
       REFERENCES [CODIGO_POSTAL]([CODIGO_POSTAL])
@@ -531,18 +530,17 @@ END
 CREATE PROCEDURE insertar_producto_variante
 AS
 BEGIN
-  DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50),@precioVenta decimal(18,2)
-  DECLARE @cursor CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION,VENTA_PRODUCTO_PRECIO
+  DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50)
+  DECLARE @cursor CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION
   FROM gd_esquema.Maestra WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
   OPEN @cursor
-  FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion,@precioVenta
+  FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion,
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
     IF NOT EXISTS (SELECT 1 FROM PRODUCTO_VARIANTE WHERE codigo_var = @prodVarianteCod)
     BEGIN
-      INSERT INTO PRODUCTO_VARIANTE (codigo_var,cod_prod,cod_producto_variante,stock,descripcion,precio_unitario_prod)
-      VALUES (id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion,@precioVenta) 
-      FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion,@precioVenta
+      INSERT INTO PRODUCTO_VARIANTE (codigo_var,cod_prod,cod_producto_variante,stock,descripcion)
+      VALUES (id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion,) 
     END
     ELSE
     BEGIN
@@ -550,6 +548,7 @@ BEGIN
       SET stock += @stock
       WHERE codigo_var = @prodVarianteCod
     END
+    FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
   CLOSE @cursor
   DEALLOCATE @cursor
 END
