@@ -425,23 +425,25 @@ END
 CREATE PROCEDURE insertar_medios_de_pago
 AS
 BEGIN
-  
-  INSERT INTO DESCUENTO_MEDIO_PAGO (PORCENTAJE_DESCUENTO)
-  SELECT DISTINCT (VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL) PORCENTAJE_DESCUENTO
-  FROM gd_esquema.Maestra
-  WHERE VENTA_DESCUENTO_CONCEPTO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO != 'Otros'
-
-  DECLARE @medioPago nvarchar(255),@valorDescuento decimal(18,2),@costoTransaccion decimal(18,2),@codigoDescuento decimal(19,0),@medioPagoId decimal(19,0)
+  DECLARE @medioPago nvarchar(255),@valorDescuento decimal(18,2),@costoTransaccion decimal(18,2),@medioPagoId decimal(19,0),@descuentoConcepto nvarchar(255)
   DECLARE @cursor CURSOR FOR
-  SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO,(SELECT CODIGO_DESC_MP FROM DESCUENTO_MEDIO_PAGO WHERE PORCENTAJE_DESCUENTO=VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL)
+  SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO,VENTA_DESCUENTO_CONCEPTO
   FROM gd_esquema.Maestra
   WHERE VENTA_MEDIO_PAGO IS NOT NULL
   OPEN @cursor
   FETCH @cursor INTO @medioPago,@valorDescuento,@costoTransaccion,@codigoDescuento
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
-    INSERT INTO MEDIO_DE_PAGO (medio_pago,valor_desc,costo_transaccion,codigo_desc_mp)
-    VALUES (@medioPago,@valorDescuento,@costoTransaccion,@codigoDescuento)
+    IF (@descuentoConcepto != 'Otros')
+    BEGIN
+      INSERT INTO MEDIO_DE_PAGO (medio_pago,valor_desc,costo_transaccion)
+      VALUES (@medioPago,@valorDescuento,@costoTransaccion)
+    END
+    ELSE
+    BEGIN
+      INSERT INTO MEDIO_DE_PAGO (medio_pago,0,costo_transaccion)
+      VALUES (@medioPago,@valorDescuento,@costoTransaccion)
+    END
   END
   CLOSE @cursor
   DEALLOCATE @cursor
@@ -450,17 +452,18 @@ END
 CREATE PROCEDURE insertar_descuentos_x_medio_de_pago
 AS
 BEGIN
-  DECLARE @medioPagoId decimal(19,0),@codigoDescuento decimal(19,0)
+  DECLARE @medioPago decimal(19,0),@porcDescuento decimal(18,2)
   DECLARE @cursor CURSOR FOR
-  SELECT id_medio_pago,codigo_desc_mp
-  FROM MEDIO_DE_PAGO
+  SELECT DISTINCT VENTA_MEDIO_PAGO, VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL PORCENTAJE_DESCUENTO 
+  FROM gd_esquema.Maestra
+  WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_IMPORTE IS NOT NULL
   OPEN @cursor
-  FETCH @cursor INTO @medioPagoId,@codigoDescuento
+  FETCH @cursor INTO @medioPago,@porcDescuento
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
     INSERT INTO DESCUENTO_X_MEDIO_DE_PAGO (id_medio_pago,codigo_desc_compra)
-    VALUES (@medioPagoId,@codigoDescuento)
-    FETCH @cursor INTO @medioPagoId,@codigoDescuento
+    VALUES (@medioPagoId,(SELECT CODIGO_DESC_MP WHERE PORCENTAJE_DESCUENTO=@porcDescuento))
+    FETCH @cursor INTO @medioPago,@porcDescuento
   END
   CLOSE @cursor
   DEALLOCATE @cursor
