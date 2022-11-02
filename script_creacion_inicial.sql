@@ -263,11 +263,11 @@ CREATE PROCEDURE insertar_proveedor
 AS
 BEGIN
 	DECLARE @cuit nvarchar(255),@domicilio nvarchar(255),@codPostal decimal(19,0),@razonSocial nvarchar(255),@mail nvarchar(255),@provincia nvarchar(255),@localidad nvarchar(255)
-	DECLARE @cursor CURSOR FOR SELECT DISTINCT PROVEEDOR_CUIT,PROVEEDOR_DOMICILIO,PROVEEDOR_CODIGO_POSTAL,PROVEEDOR_RAZON_SOCIAL,
+	DECLARE cursorc CURSOR FOR (SELECT DISTINCT PROVEEDOR_CUIT,PROVEEDOR_DOMICILIO,PROVEEDOR_CODIGO_POSTAL,PROVEEDOR_RAZON_SOCIAL,
 								PROVEEDOR_MAIL,PROVEEDOR_PROVINCIA, PROVEEDOR_LOCALIDAD
-								FROM gd_esquema.Maestra WHERE PROVEEDOR_CUIT IS NOT NULL
-	OPEN @cursor
-	FETCH NEXT FROM	@cursor INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
+								FROM gd_esquema.Maestra WHERE PROVEEDOR_CUIT IS NOT NULL)
+	OPEN cursorc
+	FETCH NEXT FROM	cursorc INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @codProvincia decimal(19,0)
@@ -276,15 +276,48 @@ BEGIN
 			INSERT INTO provincia (nombre_prov)
 			VALUES (@provincia)
 			INSERT INTO codigo_postal (codigo_provincia)
-			SELECT @codProvincia = codigo_provincia WHERE nombre_prov = @provincia
+			SELECT   codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
+			SELECT @codProvincia =  codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
 		END
-		SELECT @codProvincia = codigo_provincia WHERE nombre_prov = @provincia
+		SELECT @codProvincia = codigo_provincia FROM provincia WHERE nombre_prov = @provincia 
 		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
 		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@codProvincia)
-		FETCH NEXT FROM	@cursor INTO @cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia
+		FETCH NEXT FROM	cursorc INTO @cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia
 	END
-	CLOSE @cursor
-	DEALLOCATE @cursor
+	CLOSE cursorc
+	DEALLOCATE cursorc
+END
+
+
+CREATE PROCEDURE insertar_productos
+AS
+CREATE PROCEDURE insertar_proveedor
+AS
+BEGIN
+	DECLARE @cuit nvarchar(255),@domicilio nvarchar(255),@codPostal decimal(19,0),@razonSocial nvarchar(255),@mail nvarchar(255),@provincia nvarchar(255),@localidad nvarchar(255)
+	DECLARE cursorc CURSOR FOR (SELECT DISTINCT PROVEEDOR_CUIT,PROVEEDOR_DOMICILIO,PROVEEDOR_CODIGO_POSTAL,PROVEEDOR_RAZON_SOCIAL,
+								PROVEEDOR_MAIL,PROVEEDOR_PROVINCIA, PROVEEDOR_LOCALIDAD
+								FROM gd_esquema.Maestra WHERE PROVEEDOR_CUIT IS NOT NULL)
+	OPEN cursorc
+	FETCH NEXT FROM	cursorc INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+		DECLARE @codProvincia decimal(19,0)
+		IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
+		BEGIN
+			INSERT INTO provincia (nombre_prov)
+			VALUES (@provincia)
+			INSERT INTO codigo_postal (codigo_provincia)
+			SELECT   codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
+			SELECT @codProvincia =  codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia 
+		END
+		SELECT @codProvincia = codigo_provincia FROM provincia WHERE nombre_prov = @provincia 
+		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
+		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@codProvincia)
+		FETCH NEXT FROM	cursorc INTO @cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@provincia
+	END
+	CLOSE cursorc
+	DEALLOCATE cursorc
 END
 
 
@@ -310,34 +343,34 @@ CREATE PROCEDURE insertar_variantes
 AS
 BEGIN
 	DECLARE @variante nvarchar(50),@tipo nvarchar(50),@codigo nvarchar(50)
-	DECLARE @cursor CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE_CODIGO 
+	DECLARE cursorc CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE_CODIGO 
 								FROM gd_esquema.Maestra
 								WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
-	OPEN @cursor
-	FETCH NEXT FROM @cursor INTO @variante,@tipo,@codigo
+	OPEN cursorc
+	FETCH NEXT FROM cursorc INTO @variante,@tipo,@codigo
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 		INSERT INTO tipo_variante (codigo_tipo_var,descripcion_tipo_var)
 		VALUES (@codigo,@tipo)
 		INSERT INTO variante (codigo_tipo_var,valor)
 		VALUES (@codigo,@variante)
-		FETCH NEXT FROM @cursor INTO @variante,@tipo,@codigo
+		FETCH NEXT FROM cursorc INTO @variante,@tipo,@codigo
 	END
-	CLOSE @cursor
-	DEALLOCATE @cursor
+	CLOSE cursorc
+	DEALLOCATE cursorcr
 END
 
 CREATE PROCEDURE insertar_clientes
 AS
 BEGIN
 	DECLARE @nombre nvarchar(255),@apellido nvarchar(255),@dni decimal(18,0),@direccion nvarchar(255),@telefono decimal(18,0),@mail nvarchar(255),@fechaNacimiento date,@localidad nvarchar(255),@codPostal decimal(19,0),@provincia nvarchar(255)
-	DECLARE @cursor CURSOR FOR 
+	DECLARE cursorc CURSOR FOR 
 		(SELECT DISTINCT CLIENTE_NOMBRE,CLIENTE_APELLIDO,CLIENTE_DNI,CLIENTE_DIRECCION,CLIENTE_TELEFONO,
 		CLIENTE_MAIL, CLIENTE_FECHA_NAC,CLIENTE_LOCALIDAD, CLIENTE_CODIGO_POSTAL, CLIENTE_PROVINCIA  
 		FROM gd_esquema.Maestra
 		WHERE CLIENTE_DNI IS NOT NULL)
-	OPEN @cursor
-	FETCH NEXT FROM @cursor INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
+	OPEN cursorc
+	FETCH NEXT FROM cursorc INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @codProvincia decimal(19,0)
@@ -346,15 +379,15 @@ BEGIN
 			INSERT INTO provincia (nombre_prov)
 			VALUES (@provincia)
 			INSERT INTO codigo_postal (codigo_provincia)
-			SELECT codigo_provincia WHERE nombre_prov = @provincia --distinct?
+			SELECT codigo_provincia FROM provincia WHERE nombre_prov = @provincia --distinct?
 		END
-		SELECT @codProvincia = codigo_provincia WHERE nombre_prov = @provincia
+		SELECT @codProvincia = codigo_provincia from provincia WHERE nombre_prov = @provincia
 		INSERT INTO cliente (nombre_cliente,apellido_cliente,dni_cliente,direccion_cliente,telefono_cliente,mail_cliente,fecha_nac_cliente,localidad_cliente,codigo_postal,codigo_provincia)
 		VALUES (@nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@codProvincia)
-		FETCH NEXT FROM @cursor INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
+		FETCH NEXT FROM cursorc INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
 	END
-	CLOSE @cursor
-	DEALLOCATE @cursor
+	CLOSE cursorc
+	DEALLOCATE cursorc
 END
 
 CREATE PROCEDURE insertar_descuentos_compra
@@ -396,42 +429,43 @@ CREATE PROCEDURE insertar_compras
 AS
 BEGIN
 	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@total decimal(18,2),@cuit nvarchar(50),@codDescuentoCompra decimal(19,0),@prodVarianteCod nvarchar(50)
-	DECLARE @cursor CURSOR FOR 
+	DECLARE cursorc CURSOR FOR 
 	SELECT DISTINCT COMPRA_NUMERO,COMPRA_FECHA,COMPRA_MEDIO_PAGO,COMPRA_TOTAL,PROVEEDOR_CUIT,DESCUENTO_COMPRA_CODIGO,PRODUCTO_VARIANTE_CODIGO
 	FROM gd_esquema.Maestra WHERE COMPRA_NUMERO IS NOT NULL
-	OPEN @cursor
-	FETCH @cursor INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
+	OPEN cursorc
+	FETCH cursorc INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
 	WHILE(@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @totalCompra decimal(18,2)
 		INSERT INTO COMPRA_PRODUCTO
-		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO, @totalCompra = (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) precio_total, @codCompra,@prodVarianteCod
-		FROM gd_esquema.Maestra
-		WHERE COMPRA_NUMERO = @codCompra
+		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) precio_total, @codCompra,@prodVarianteCod
+		FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
+		select @totalCompra =  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO)FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
 
-		INSERT INTO compra
+		INSERT INTO compra (COD_COMPRA,FECHA_COMPRA,ID_MEDIO_PAGO, TOTAL_COMPRA,CUIT_PROV)
 		VALUES (@codCompra,@fecha,(SELECT ID_MEDIO_PAGO FROM MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago),@totalCompra,@cuit)
 
 		INSERT INTO DESCUENTO_X_COMPRA (cod_compra,codigo_desc_compra)
 		VALUES (@codCompra,@codDescuentoCompra)
 
 
-		FETCH @cursor INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra
+		FETCH cursorc INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra
 	END
-	CLOSE @cursor
-	DEALLOCATE @cursor
+	CLOSE cursorc
+	DEALLOCATE cursorc
 END
 
 CREATE PROCEDURE insertar_medios_de_pago
 AS
 BEGIN
   DECLARE @medioPago nvarchar(255),@valorDescuento decimal(18,2),@costoTransaccion decimal(18,2),@medioPagoId decimal(19,0),@descuentoConcepto nvarchar(255)
-  DECLARE @cursor CURSOR FOR
+
+  DECLARE cursorc CURSOR FOR
   SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO,VENTA_DESCUENTO_CONCEPTO
   FROM gd_esquema.Maestra
   WHERE VENTA_MEDIO_PAGO IS NOT NULL
-  OPEN @cursor
-  FETCH @cursor INTO @medioPago,@valorDescuento,@costoTransaccion,@codigoDescuento
+  OPEN cursorc
+  FETCH cursorc INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
     IF (@descuentoConcepto != 'Otros')
@@ -441,58 +475,33 @@ BEGIN
     END
     ELSE
     BEGIN
-      INSERT INTO MEDIO_DE_PAGO (medio_pago,0,costo_transaccion)
-      VALUES (@medioPago,@valorDescuento,@costoTransaccion)
+      INSERT INTO MEDIO_DE_PAGO (medio_pago,VALOR_DESC,costo_transaccion)
+      VALUES (@medioPago,0,@costoTransaccion)
     END
+	FETCH cursorc INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
   END
-  CLOSE @cursor
-  DEALLOCATE @cursor
+  CLOSE cursorc
+  DEALLOCATE cursorc
 END
 
 CREATE PROCEDURE insertar_descuentos_x_medio_de_pago
 AS
 BEGIN
-  DECLARE @medioPago decimal(19,0),@porcDescuento decimal(18,2)
-  DECLARE @cursor CURSOR FOR
+  DECLARE @medioPagoId decimal(19,0),@porcDescuento decimal(18,2)
+  DECLARE cursorc CURSOR FOR
   SELECT DISTINCT VENTA_MEDIO_PAGO, VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL PORCENTAJE_DESCUENTO 
   FROM gd_esquema.Maestra
   WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_IMPORTE IS NOT NULL
-  OPEN @cursor
-  FETCH @cursor INTO @medioPago,@porcDescuento
+  OPEN cursorc
+  FETCH cursorc INTO @medioPagoId,@porcDescuento
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
-    INSERT INTO DESCUENTO_X_MEDIO_DE_PAGO (id_medio_pago,codigo_desc_compra)
-    VALUES (@medioPagoId,(SELECT CODIGO_DESC_MP WHERE PORCENTAJE_DESCUENTO=@porcDescuento))
-    FETCH @cursor INTO @medioPago,@porcDescuento
+    INSERT INTO DESCUENTO_X_MEDIO_DE_PAGO (id_medio_pago,CODIGO_DESC_MP)
+    VALUES (@medioPagoId,(SELECT CODIGO_DESC_MP FROM  DESCUENTO_MEDIO_PAGO WHERE PORCENTAJE_DESCUENTO=@porcDescuento))
+    FETCH cursorc INTO @medioPagoId,@porcDescuento
   END
-  CLOSE @cursor
-  DEALLOCATE @cursor
-END
-
-CREATE PROCEDURE insertar_producto_variante
-AS
-BEGIN
-  DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50)
-  DECLARE @cursor CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION
-  FROM gd_esquema.Maestra WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
-  OPEN @cursor
-  FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion,
-  WHILE (@@FETCH_STATUS = 0)
-  BEGIN
-    IF NOT EXISTS (SELECT 1 FROM PRODUCTO_VARIANTE WHERE codigo_var = @prodVarianteCod)
-    BEGIN
-      INSERT INTO PRODUCTO_VARIANTE (codigo_var,cod_prod,cod_producto_variante,stock,descripcion)
-      VALUES (id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion,) 
-    END
-    ELSE
-    BEGIN
-      UPDATE PRODUCTO_VARIANTE
-      SET stock += @stock
-      WHERE codigo_var = @prodVarianteCod
-    END
-    FETCH NEXT FROM @cursor INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
-  CLOSE @cursor
-  DEALLOCATE @cursor
+  CLOSE cursorc
+  DEALLOCATE cursorc
 END
 
 CREATE FUNCTION id_producto_variante(@variante nvarchar(50),@tipoVariante nvarchar(50))
@@ -501,9 +510,38 @@ AS
 BEGIN
   DECLARE @id nvarchar(50)
   SELECT @id=codigo_var FROM VARIANTE
-  WHERE valor = @valor AND (SELECT codigo_tipo_var FROM TIPO_VARIANTE WHERE descripcion_tipo_var = @tipo) = codigo_tipo_var
+  WHERE valor = @VARIANTE AND (SELECT codigo_tipo_var FROM TIPO_VARIANTE WHERE descripcion_tipo_var = @tipoVariante) = codigo_tipo_var
   RETURN @id
 END
+
+CREATE PROCEDURE insertar_producto_variante
+AS
+BEGIN
+  DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50)
+  DECLARE cursorc CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION
+  FROM gd_esquema.Maestra WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
+  OPEN cursorc
+  FETCH NEXT FROM cursorc INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
+  WHILE(@@FETCH_STATUS = 0)
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM PRODUCTO_VARIANTE WHERE codigo_var = @prodVarianteCod)
+    BEGIN
+      INSERT INTO PRODUCTO_VARIANTE (codigo_var,cod_prod,cod_producto_variante,stock,descripcion)
+      VALUES (dbo.id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion) 
+    END
+    ELSE
+    BEGIN
+      UPDATE PRODUCTO_VARIANTE
+      SET stock += @stock
+      WHERE codigo_var = @prodVarianteCod
+    END
+    FETCH NEXT FROM cursorc INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
+  END
+  CLOSE cursorc
+  DEALLOCATE cursorc
+END
+
+
 
 CREATE PROCEDURE insertar_compra_producto
 AS
@@ -531,20 +569,20 @@ BEGIN
   DECLARE @codVenta decimal(19,0), @fecha date, @clienteDni decimal(19,0), @canalVenta decimal(19,0), @medioEnvio decimal(19,0), 
   @codigoPostal decimal(19,0),@medioPago decimal(19,0), @totalVenta decimal(18,2), @precioEnvio decimal(18,2),@cuponCod nvarchar(255),
   @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2)
-  DECLARE @cursor CURSOR FOR
+  DECLARE cursorc CURSOR FOR
   SELECT DISTINCT VENTA_CODIGO, VENTA_FECHA, CLIENTE_DNI, VENTA_CANAL, VENTA_MEDIO_ENVIO, VENTA_MEDIO_PAGO, VENTA_TOTAL, 
   VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE
   FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL
-  OPEN @cursor
-  FETCH @cursor INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+  OPEN cursorc
+  FETCH cursorc INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
   @cuponImporte,@descuentoConcepto,@descuentoValor
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
 
-    INSERT INTO venta
-    VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM CLIENTE WHERE CLIENTE_DNI=@clienteDni), 
+    INSERT INTO venta (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO)
+    VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM CLIENTE WHERE DNI_CLIENTE=@clienteDni), 
             (SELECT ID_CANAL_VENTA FROM CANAL_VENTA WHERE CANAL_VENTA=@canalVenta), 
-            (SELECT ID_MEDIO_ENVIO FROM MEDIO_ENVIO WHERE MEDIO_ENVIO=@medioEnvio), (SELECT ID_MEDIO_PAGO FROM MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago), 
+            (SELECT ID_MEDIO_ENVIO FROM MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio), (SELECT ID_MEDIO_PAGO FROM MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago), 
             @totalVenta, 
             @precioEnvio)
 
@@ -556,12 +594,12 @@ BEGIN
     IF @descuentoConcepto = 'Otros'
     BEGIN
       INSERT INTO VENTA_MEDIANTE_DESCUENTO_FIJO (cod_venta, codigo_descuento, importe)
-      VALUES ((SELECT CODIGO_DESCUENTO FROM DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
+      VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
     END
-    FETCH @cursor INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+    FETCH cursorc INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
     @cuponImporte,@descuentoConcepto,@descuentoValor
 	END
-	CLOSE @cursor
-	DEALLOCATE @cursor
+	CLOSE cursorc
+	DEALLOCATE cursorc
 END
 
