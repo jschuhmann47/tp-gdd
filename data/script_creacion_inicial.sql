@@ -1,7 +1,7 @@
-USE [Prueba_gestion_tres]
-GO
-
-create schema gd_esquema
+--USE [Prueba_gestion_tres]
+--GO
+                                --Adapatar a cada uno.
+--create schema gd_esquema
 
 
 CREATE TABLE  [gd_esquema].[MEDIO_DE_PAGO] (
@@ -30,9 +30,9 @@ CREATE TABLE [gd_esquema].[PROVINCIA] (
   PRIMARY KEY ([CODIGO_PROVINCIA])
 );
 
-delete from [gd_esquema].[PROVINCIA]
-delete from [gd_esquema].[CLIENTE]
-delete from [gd_esquema].[CODIGO_POSTAL]
+--delete from [gd_esquema].[PROVINCIA]
+--delete from [gd_esquema].[CLIENTE]
+--delete from [gd_esquema].[CODIGO_POSTAL]
 
 
 
@@ -73,8 +73,8 @@ CREATE TABLE [gd_esquema].[CLIENTE] (
   PRIMARY KEY ([ID_CLIENTE]) 
 );
 
-delete from [gd_esquema].[CLIENTE]
-delete from [gd_esquema].[CODIGO_POSTAL]
+--delete from [gd_esquema].[CLIENTE]
+--delete from [gd_esquema].[CODIGO_POSTAL]
 
 
 CREATE TABLE [gd_esquema].[DESCUENTO_COMPRA] (
@@ -83,7 +83,7 @@ CREATE TABLE [gd_esquema].[DESCUENTO_COMPRA] (
   PRIMARY KEY ([CODIGO_DESC_COMPRA])
 );
 -----------------------------------------------------------------------------------------------------------
-DROP TABLE [gd_esquema].[DESCUENTO_COMPRA]
+--DROP TABLE [gd_esquema].[DESCUENTO_COMPRA]
 
 CREATE TABLE [gd_esquema].[DESCUENTO_MEDIO_PAGO] (
   [CODIGO_DESC_MP] DECIMAL(19,0) IDENTITY (1,1),
@@ -204,7 +204,7 @@ CREATE TABLE [gd_esquema].[CODIGO_POSTAL] (
   PRIMARY KEY ([CODIGO_POSTAL])
 );
 
-delete from [gd_esquema].[CODIGO_POSTAL]
+--delete from [gd_esquema].[CODIGO_POSTAL]
 
 
 CREATE TABLE [gd_esquema].[DESCUENTO_X_COMPRA] (
@@ -410,7 +410,7 @@ BEGIN
 	DEALLOCATE cursorcc
 END
 
-DROP  PROCEDURE insertar_variantes
+--DROP  PROCEDURE insertar_variantes
 
 
 GO
@@ -450,9 +450,9 @@ BEGIN
 	DEALLOCATE cursorx
 END
 
-DROP  PROCEDURE insertar_clientes
+--DROP  PROCEDURE insertar_clientes
 
-SELECT * FROM gd_esquema.PROVINCIA
+--SELECT * FROM gd_esquema.PROVINCIA
 
 GO
 
@@ -502,31 +502,35 @@ CREATE PROCEDURE insertar_compras
 AS
 BEGIN
 	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@total decimal(18,2),@cuit nvarchar(50),@codDescuentoCompra decimal(19,0),@prodVarianteCod nvarchar(50)
-	DECLARE cursorc CURSOR FOR 
+	DECLARE cursorw CURSOR FOR 
 	SELECT DISTINCT COMPRA_NUMERO,COMPRA_FECHA,COMPRA_MEDIO_PAGO,COMPRA_TOTAL,PROVEEDOR_CUIT,DESCUENTO_COMPRA_CODIGO,PRODUCTO_VARIANTE_CODIGO
 	FROM gd_esquema.Maestra WHERE COMPRA_NUMERO IS NOT NULL
-	OPEN cursorc
-	FETCH cursorc INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
+	OPEN cursorw
+	FETCH cursorw INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
 	WHILE(@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @totalCompra decimal(18,2)
-		INSERT INTO gd_esquema.COMPRA_PRODUCTO
+		INSERT INTO gd_esquema.COMPRA_PRODUCTO (CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_COMPRA,COD_PRODUCTO_VARIANTE) 
 		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL, @codCompra,@prodVarianteCod
 		FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
-		select @totalCompra =  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
+		
+		select @totalCompra = (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
 
 		INSERT INTO gd_esquema.COMPRA (COD_COMPRA,FECHA_COMPRA,ID_MEDIO_PAGO, TOTAL_COMPRA,CUIT_PROV)
 		VALUES (@codCompra,@fecha,(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago),@totalCompra,@cuit)
 
-		INSERT INTO gd_esquema.DESCUENTO_X_COMPRA (COD_COMPRA,CODIGO_DESC_COMPRA)
-		VALUES (@codCompra,@codDescuentoCompra)
+		IF  @codDescuentoCompra IS NOT NULL
+			begin
+				INSERT INTO gd_esquema.DESCUENTO_X_COMPRA (COD_COMPRA,CODIGO_DESC_COMPRA)
+				VALUES (@codCompra,@codDescuentoCompra)
+			end
 
-
-		FETCH cursorc INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra
+		FETCH cursorw INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
 	END
-	CLOSE cursorc
-	DEALLOCATE cursorc
+	CLOSE cursorw
+	DEALLOCATE cursorw
 END
+--DROP  PROCEDURE insertar_compras
 
 GO
 
@@ -696,13 +700,16 @@ exec insertar_productos
 exec insertar_canales_venta
 exec insertar_variantes
 exec insertar_clientes
-
-
 exec insertar_descuentos_compra
 exec insertar_medio_envio_x_codigo_postal
 exec insertar_descuentos_cupon
 exec insertar_descuentos_fijo
+
+
+-------------------------------------------HASTA ACA FUNCIONA TODO
 exec insertar_compras
+
+
 exec insertar_medios_de_pago
 exec insertar_descuentos_x_medio_de_pago
 exec insertar_producto_variante
