@@ -81,26 +81,26 @@ CREATE TABLE [gd_esquema].[PRODUCTO] (
   [COD_PROD] nvarchar(50),
   [NOMBRE_PROD] nvarchar(50),
   [DESCRIPCION_PROD] nvarchar(50),
-  [ID_MARCA_PROD] decimal(19,0), --todo hacer las constraints
+  [ID_MARCA_PROD] decimal(19,0),
   [ID_CATEGORIA_PROD] decimal(19,0),
   [ID_MATERIAL_PROD] decimal(19,0),
   PRIMARY KEY ([COD_PROD])
 );
 
 CREATE TABLE [gd_esquema].[MARCA] (
-  [ID_MARCA] decimal(19,0),
+  [ID_MARCA] decimal(19,0) IDENTITY (1,1),
   [MARCA] nvarchar(255),
   PRIMARY KEY ([ID_MARCA])
 );
 
 CREATE TABLE [gd_esquema].[CATEGORIA] (
-  [ID_CATEGORIA] decimal(19,0),
+  [ID_CATEGORIA] decimal(19,0) IDENTITY (1,1),
   [CATEGORIA] nvarchar(255),
   PRIMARY KEY ([ID_CATEGORIA])
 );
 
 CREATE TABLE [gd_esquema].[MATERIAL] (
-  [ID_MATERIAL] decimal(19,0), --todo alter table fk
+  [ID_MATERIAL] decimal(19,0) IDENTITY (1,1),
   [MATERIAL] nvarchar(50),
   PRIMARY KEY ([ID_MATERIAL])
 );
@@ -319,13 +319,36 @@ END
 
 GO
 
+CREATE PROCEDURE insertar_marca_categoria_y_material
+AS
+BEGIN
+  INSERT INTO gd_esquema.MARCA (MARCA)
+  SELECT DISTINCT PRODUCTO_MARCA FROM gd_esquema.Maestra WHERE PRODUCTO_MARCA IS NOT NULL
+
+  INSERT INTO gd_esquema.CATEGORIA (CATEGORIA)
+  SELECT DISTINCT PRODUCTO_MARCA FROM gd_esquema.Maestra WHERE PRODUCTO_MARCA IS NOT NULL
+
+  INSERT INTO gd_esquema.MATERIAL (MATERIAL)
+  SELECT DISTINCT PRODUCTO_MARCA FROM gd_esquema.Maestra WHERE PRODUCTO_MARCA IS NOT NULL
+END
+
+GO
+
 CREATE PROCEDURE insertar_productos
 AS
 BEGIN
-	INSERT INTO gd_esquema.PRODUCTO (COD_PROD,NOMBRE_PROD,DESCRIPCION_PROD,MARCA_PROD,CATEGORIA_PROD,MATERIAL_PROD)
-	SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
-	FROM gd_esquema.Maestra
-	WHERE PRODUCTO_CODIGO IS NOT NULL
+  DECLARE @prodCodigo nvarchar(50),@prodNombre nvarchar(50), @prodDesc nvarchar(50), @marca nvarchar(255),@categoria nvarchar(255), @material nvarchar(50)
+  DECLARE cursorc CURSOR FOR SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
+      FROM gd_esquema.Maestra
+      WHERE PRODUCTO_CODIGO IS NOT NULL
+  OPEN cursorc
+	FETCH NEXT FROM cursorc INTO @prodCodigo,@prodNombre,@prodDesc,@marca,@categoria,@material
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+    INSERT INTO gd_esquema.PRODUCTO (COD_PROD,NOMBRE_PROD,DESCRIPCION_PROD,ID_MARCA_PROD,ID_CATEGORIA_PROD,ID_MATERIAL_PROD)
+    VALUES (@prodCodigo,@prodNombre,@prodDesc,(SELECT ID_MARCA FROM gd_esquema.MARCA WHERE MARCA=@marca),(SELECT ID_CATEGORIA FROM gd_esquema.CATEGORIA WHERE CATEGORIA=@categoria),(SELECT ID_MATERIAL FROM gd_esquema.MATERIAL WHERE MATERIAL=@material))
+    FETCH NEXT FROM cursorc INTO @prodCodigo,@prodNombre,@prodDesc,@marca,@categoria,@material
+  END
 END
 
 GO
