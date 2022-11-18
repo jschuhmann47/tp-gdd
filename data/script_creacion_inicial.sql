@@ -295,18 +295,18 @@ BEGIN
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 	DECLARE @codProvincia decimal(19,0)
-		IF NOT EXISTS (SELECT 1 FROM provincia WHERE NOMBRE_PROV = @codPostal)
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia)
 		BEGIN
-			INSERT INTO provincia (nombre_prov)
+			INSERT INTO gd_esquema.PROVINCIA (nombre_prov)
 			VALUES (@provincia)
-      IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal)
+      IF NOT EXISTS (SELECT 1 FROM gd_esquema.CODIGO_POSTAL WHERE CODIGO_POSTAL = @codPostal)
       BEGIN
-        INSERT INTO codigo_postal (codigo_provincia)
-        SELECT codigo_provincia FROM PROVINCIA WHERE nombre_prov = @provincia
+        INSERT INTO gd_esquema.CODIGO_POSTAL (CODIGO_PROVINCIA)
+        SELECT CODIGO_PROVINCIA FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia
       END
 		END	
-		SELECT @codProvincia = codigo_provincia FROM provincia WHERE nombre_prov = @provincia 
-		INSERT INTO proveedor (cuit_prov,razon_social_prov,domicilio_prov,mail_prov,localidad_prov,codigo_postal,codigo_provincia)
+		SELECT @codProvincia = CODIGO_PROVINCIA FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia 
+		INSERT INTO gd_esquema.PROVEEDOR (CUIT_PROV,RAZON_SOCIAL_PROV,DOMICILIO_PROV,MAIL_PROV,LOCALIDAD_PROV,CODIGO_POSTAL,CODIGO_PROVINCIA)
 		VALUES (@cuit,@razonSocial,@domicilio,@mail,@localidad,@codPostal,@codProvincia)
 		FETCH NEXT FROM	cursorc INTO @cuit,@domicilio,@codPostal,@razonSocial,@mail,@provincia,@localidad
 	END
@@ -322,7 +322,7 @@ GO
 CREATE PROCEDURE insertar_productos
 AS
 BEGIN
-	INSERT INTO producto (cod_prod,nombre_prod,descripcion_prod,marca_prod,categoria_prod,material_prod)
+	INSERT INTO gd_esquema.PRODUCTO (COD_PROD,NOMBRE_PROD,DESCRIPCION_PROD,MARCA_PROD,CATEGORIA_PROD,MATERIAL_PROD)
 	SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
 	FROM gd_esquema.Maestra
 	WHERE PRODUCTO_CODIGO IS NOT NULL
@@ -333,11 +333,12 @@ GO
 CREATE PROCEDURE insertar_canales_venta
 AS
 BEGIN
-	INSERT INTO canal_venta (canal_venta,canal_costo)
+	INSERT INTO gd_esquema.CANAL_VENTA (CANAL_VENTA,CANAL_COSTO)
 	SELECT DISTINCT VENTA_CANAL,VENTA_CANAL_COSTO 
 	FROM gd_esquema.Maestra
 	WHERE VENTA_CANAL IS NOT NULL
 END
+
 
 GO
 
@@ -352,9 +353,9 @@ BEGIN
 	FETCH NEXT FROM cursorc INTO @variante,@tipo,@codigo
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
-		INSERT INTO tipo_variante (codigo_tipo_var,descripcion_tipo_var)
+		INSERT INTO gd_esquema.TIPO_VARIANTE (CODIGO_TIPO_VAR,DESCRIPCION_TIPO_VAR)
 		VALUES (@codigo,@tipo)
-		INSERT INTO variante (codigo_tipo_var,valor)
+		INSERT INTO gd_esquema.VARIANTE (CODIGO_TIPO_VAR,VALOR)
 		VALUES (@codigo,@variante)
 		FETCH NEXT FROM cursorc INTO @variante,@tipo,@codigo
 	END
@@ -378,15 +379,15 @@ BEGIN
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @codProvincia decimal(19,0)
-		IF NOT EXISTS (SELECT 1 FROM codigo_postal WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.CODIGO_POSTAL WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
 		BEGIN
-			INSERT INTO provincia (nombre_prov)
+			INSERT INTO gd_esquema.PROVINCIA (NOMBRE_PROV)
 			VALUES (@provincia)
-			INSERT INTO codigo_postal (codigo_provincia)
-			SELECT codigo_provincia FROM provincia WHERE nombre_prov = @provincia --distinct?
+			INSERT INTO gd_esquema.CODIGO_POSTAL (CODIGO_PROVINCIA)
+			SELECT CODIGO_PROVINCIA FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia --distinct?
 		END
-		SELECT @codProvincia = codigo_provincia from provincia WHERE nombre_prov = @provincia
-		INSERT INTO cliente (nombre_cliente,apellido_cliente,dni_cliente,direccion_cliente,telefono_cliente,mail_cliente,fecha_nac_cliente,localidad_cliente,codigo_postal,codigo_provincia)
+		SELECT @codProvincia = CODIGO_PROVINCIA from gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia
+		INSERT INTO gd_esquema.CLIENTE (NOMBRE_CLIENTE,APELLIDO_CLIENTE,DNI_CLIENTE,DIRECCION_CLIENTE,TELEFONO_CLIENTE,MAIL_CLIENTE,FECHA_NAC_CLIENTE,LOCALIDAD_CLIENTE,CODIGO_POSTAL,CODIGO_PROVINCIA)
 		VALUES (@nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@codProvincia)
 		FETCH NEXT FROM cursorc INTO @nombre,@apellido,@dni,@direccion,@telefono,@mail,@fechaNacimiento,@localidad,@codPostal,@provincia
 	END
@@ -399,7 +400,7 @@ GO
 CREATE PROCEDURE insertar_descuentos_compra
 AS
 BEGIN
-	INSERT INTO DESCUENTO_COMPRA (codigo_desc_compra,monto_desc_compra)
+	INSERT INTO gd_esquema.DESCUENTO_COMPRA (CODIGO_DESC_COMPRA,MONTO_DESC_COMPRA)
 	SELECT DISTINCT DESCUENTO_COMPRA_CODIGO,DESCUENTO_COMPRA_VALOR 
 	FROM gd_esquema.Maestra WHERE DESCUENTO_COMPRA_CODIGO IS NOT NULL
 END
@@ -409,8 +410,8 @@ GO
 CREATE PROCEDURE insertar_medio_envio_x_codigo_postal
 AS
 BEGIN
-	INSERT INTO MEDIO_ENVIO_X_CODIGO_POSTAL (codigo_postal,tiempo_est,precio,medio)
-	SELECT DISTINCT CLIENTE_CODIGO_POSTAL,NULL TIEMPO_EST,VENTA_ENVIO_PRECIO,VENTA_MEDIO_ENVIO
+	INSERT INTO gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL (CODIGO_POSTAL,TIEMPO_EST,PRECIO,MEDIO)
+	SELECT DISTINCT CLIENTE_CODIGO_POSTAL,NULL,VENTA_ENVIO_PRECIO,VENTA_MEDIO_ENVIO
   FROM gd_esquema.Maestra
   WHERE VENTA_MEDIO_ENVIO IS NOT NULL
 END
@@ -420,7 +421,7 @@ GO
 CREATE PROCEDURE insertar_descuentos_cupon
 AS
 BEGIN
-	INSERT INTO DESCUENTO_CUPON (codigo_cupon,valor_desc,fecha_desde,fecha_hasta)
+	INSERT INTO gd_esquema.DESCUENTO_CUPON (CODIGO_CUPON,VALOR_DESC,FECHA_DESDE,FECHA_HASTA)
 	SELECT DISTINCT VENTA_CUPON_CODIGO,VENTA_CUPON_VALOR,VENTA_CUPON_FECHA_DESDE,VENTA_CUPON_FECHA_HASTA 
 	FROM gd_esquema.Maestra WHERE VENTA_CUPON_CODIGO IS NOT NULL
 END
@@ -430,7 +431,7 @@ GO
 CREATE PROCEDURE insertar_descuentos_fijo
 AS
 BEGIN
-  INSERT INTO DESCUENTO_FIJO (tipo_desc,valor_desc)
+  INSERT INTO gd_esquema.DESCUENTO_FIJO (TIPO_DESC,VALOR_DESC)
   SELECT DISTINCT VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE
   FROM gd_esquema.Maestra
   WHERE VENTA_DESCUENTO_CONCEPTO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO = 'Otros'
@@ -450,15 +451,15 @@ BEGIN
 	WHILE(@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @totalCompra decimal(18,2)
-		INSERT INTO COMPRA_PRODUCTO
-		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) precio_total, @codCompra,@prodVarianteCod
+		INSERT INTO gd_esquema.COMPRA_PRODUCTO
+		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL, @codCompra,@prodVarianteCod
 		FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
-		select @totalCompra =  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO)FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
+		select @totalCompra =  (COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) FROM gd_esquema.Maestra WHERE COMPRA_NUMERO = @codCompra
 
-		INSERT INTO compra (COD_COMPRA,FECHA_COMPRA,ID_MEDIO_PAGO, TOTAL_COMPRA,CUIT_PROV)
-		VALUES (@codCompra,@fecha,(SELECT ID_MEDIO_PAGO FROM MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago),@totalCompra,@cuit)
+		INSERT INTO gd_esquema.COMPRA (COD_COMPRA,FECHA_COMPRA,ID_MEDIO_PAGO, TOTAL_COMPRA,CUIT_PROV)
+		VALUES (@codCompra,@fecha,(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago),@totalCompra,@cuit)
 
-		INSERT INTO DESCUENTO_X_COMPRA (cod_compra,codigo_desc_compra)
+		INSERT INTO gd_esquema.DESCUENTO_X_COMPRA (COD_COMPRA,CODIGO_DESC_COMPRA)
 		VALUES (@codCompra,@codDescuentoCompra)
 
 
@@ -485,12 +486,12 @@ BEGIN
   BEGIN
     IF (@descuentoConcepto != 'Otros')
     BEGIN
-      INSERT INTO MEDIO_DE_PAGO (medio_pago,valor_desc,costo_transaccion)
+      INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
       VALUES (@medioPago,@valorDescuento,@costoTransaccion)
     END
     ELSE
     BEGIN
-      INSERT INTO MEDIO_DE_PAGO (medio_pago,VALOR_DESC,costo_transaccion)
+      INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
       VALUES (@medioPago,0,@costoTransaccion)
     END
 	FETCH cursorc INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
@@ -513,7 +514,7 @@ BEGIN
   FETCH cursorc INTO @medioPagoId,@porcDescuento
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
-    INSERT INTO DESCUENTO_X_MEDIO_DE_PAGO (id_medio_pago,CODIGO_DESC_MP)
+    INSERT INTO gd_esquema.DESCUENTO_X_MEDIO_DE_PAGO (ID_MEDIO_PAGO,CODIGO_DESC_MP)
     VALUES (@medioPagoId,(SELECT CODIGO_DESC_MP FROM  DESCUENTO_MEDIO_PAGO WHERE PORCENTAJE_DESCUENTO=@porcDescuento))
     FETCH cursorc INTO @medioPagoId,@porcDescuento
   END
@@ -528,8 +529,8 @@ RETURNS nvarchar(50)
 AS
 BEGIN
   DECLARE @id nvarchar(50)
-  SELECT @id=codigo_var FROM VARIANTE
-  WHERE valor = @VARIANTE AND (SELECT codigo_tipo_var FROM TIPO_VARIANTE WHERE descripcion_tipo_var = @tipoVariante) = codigo_tipo_var
+  SELECT @id=CODIGO_VAR FROM gd_esquema.VARIANTE
+  WHERE VALOR = @VARIANTE AND (SELECT CODIGO_TIPO_VAR FROM TIPO_VARIANTE WHERE DESCRIPCION_TIPO_VAR = @tipoVariante) = CODIGO_TIPO_VAR
   RETURN @id
 END
 
@@ -545,16 +546,16 @@ BEGIN
   FETCH NEXT FROM cursorc INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
-    IF NOT EXISTS (SELECT 1 FROM PRODUCTO_VARIANTE WHERE codigo_var = @prodVarianteCod)
+    IF NOT EXISTS (SELECT 1 FROM gd_esquema.PRODUCTO_VARIANTE WHERE CODIGO_VAR = @prodVarianteCod)
     BEGIN
-      INSERT INTO PRODUCTO_VARIANTE (codigo_var,cod_prod,cod_producto_variante,stock,descripcion)
-      VALUES (dbo.id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion) 
+      INSERT INTO gd_esquema.PRODUCTO_VARIANTE (CODIGO_VAR,COD_PROD,COD_PRODUCTO_VARIANTE,STOCK,DESCRIPCION)
+      VALUES (dbo.id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion) --chequear llamado de funcion
     END
     ELSE
     BEGIN
-      UPDATE PRODUCTO_VARIANTE
-      SET stock += @stock
-      WHERE codigo_var = @prodVarianteCod
+      UPDATE gd_esquema.PRODUCTO_VARIANTE
+      SET STOCK += @stock
+      WHERE CODIGO_VAR = @prodVarianteCod
     END
     FETCH NEXT FROM cursorc INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
   END
@@ -567,7 +568,7 @@ GO
 CREATE PROCEDURE insertar_compra_producto
 AS
 BEGIN
-	INSERT INTO COMPRA_PRODUCTO (cod_compra,cod_producto_variante,cantidad,precio_unit,precio_total)
+	INSERT INTO gd_esquema.COMPRA_PRODUCTO (COD_COMPRA,COD_PRODUCTO_VARIANTE,CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL)
 	SELECT COMPRA_NUMERO,PRODUCTO_VARIANTE_CODIGO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL
 	FROM gd_esquema.Maestra
 	WHERE COMPRA_NUMERO IS NOT NULL AND PRODUCTO_VARIANTE_CODIGO IS NOT NULL
@@ -579,7 +580,7 @@ GO
 CREATE PROCEDURE insertar_venta_producto
 AS
 BEGIN
-	INSERT INTO VENTA_PRODUCTO (cod_venta,cod_producto_variante,cantidad,precio_unit,precio_total)
+	INSERT INTO gd_esquema.VENTA_PRODUCTO (COD_VENTA,COD_PRODUCTO_VARIANTE,CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL)
 	SELECT VENTA_CODIGO,PRODUCTO_VARIANTE_CODIGO,VENTA_PRODUCTO_CANTIDAD,VENTA_PRODUCTO_PRECIO,SUM(VENTA_PRODUCTO_CANTIDAD*VENTA_PRODUCTO_PRECIO) PRECIO_TOTAL
 	FROM gd_esquema.Maestra
 	WHERE VENTA_CODIGO IS NOT NULL AND PRODUCTO_VARIANTE_CODIGO IS NOT NULL
@@ -604,7 +605,7 @@ BEGIN
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
 
-    INSERT INTO venta (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO)
+    INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO)
     VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM CLIENTE WHERE DNI_CLIENTE=@clienteDni), 
             (SELECT ID_CANAL_VENTA FROM CANAL_VENTA WHERE CANAL_VENTA=@canalVenta), 
             (SELECT ID_MEDIO_ENVIO FROM MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio), (SELECT ID_MEDIO_PAGO FROM MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago), 
@@ -613,12 +614,12 @@ BEGIN
 
     IF @cuponCod IS NOT NULL
     BEGIN
-      INSERT INTO VENTA_MEDIANTE_CUPON (cod_venta, codigo_cupon, importe)
+      INSERT INTO gd_esquema.VENTA_MEDIANTE_CUPON (COD_VENTA, CODIGO_CUPON, IMPORTE)
       VALUES (@codVenta, @cuponCod, @cuponImporte)
     END
     IF @descuentoConcepto = 'Otros'
     BEGIN
-      INSERT INTO VENTA_MEDIANTE_DESCUENTO_FIJO (cod_venta, codigo_descuento, importe)
+      INSERT INTO gd_esquema.VENTA_MEDIANTE_DESCUENTO_FIJO (COD_VENTA, CODIGO_DESCUENTO, IMPORTE)
       VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
     END
     FETCH cursorc INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
