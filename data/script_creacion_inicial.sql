@@ -709,14 +709,24 @@ exec insertar_descuentos_fijo
 
 
 -------------------------------------------HASTA ACA FUNCIONA TODO
-exec insertar_compras
+
+exec insertar_compras --tarda mucho
+/*
+The statement has been terminated.
+Msg 547, Level 16, State 0, Procedure insertar_compras, Line 14 [Batch Start Line 709]
+The INSERT statement conflicted with the FOREIGN KEY constraint "FK_COMPRA_PRODUCTO.COD_PRODUCTO_VARIANTE". The conflict occurred in database "GD2C2022", table "gd_esquema.PRODUCTO_VARIANTE", column 'COD_PRODUCTO_VARIANTE'.
+The statement has been terminated.
+Msg 2627, Level 14, State 1, Procedure insertar_compras, Line 20 [Batch Start Line 709]
+Violation of PRIMARY KEY constraint 'PK__COMPRA__BBEFA3D29DFE6B88'. Cannot insert duplicate key in object 'gd_esquema.COMPRA'. The duplicate key value is (131232).
+The statement has been terminated
+*/
 
 
-exec insertar_medios_de_pago
-exec insertar_descuentos_x_medio_de_pago
-exec insertar_producto_variante
+exec insertar_medios_de_pago --cambiar nombres de cursores
+exec insertar_descuentos_x_medio_de_pago --Error converting data type nvarchar to decimal. Line 11. guardar en variable el nombre, no el id
+exec insertar_producto_variante --anda
 exec insertar_compra_producto
-exec insertar_venta_producto
-exec insertar_ventas
+exec insertar_venta_producto --Violation of PRIMARY KEY constraint 'PK__VENTA_PR__54C440C8DEDAD7AA'. Cannot insert duplicate key in object 'gd_esquema.VENTA_PRODUCTO'. The duplicate key value is (0352EZPHIR4C2K5GO, 128344).
+exec insertar_ventas --Error converting data type nvarchar to decimal. el medio de envio
 
 COMMIT
