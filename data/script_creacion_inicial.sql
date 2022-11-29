@@ -1,6 +1,6 @@
 --USE [GD2C2022]
 --GO
-                                --Adapatar a cada uno.
+
 --create schema gd_esquema
 
 
@@ -473,8 +473,8 @@ AS
 BEGIN
 	INSERT INTO gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL (CODIGO_POSTAL,TIEMPO_EST,PRECIO,MEDIO)
 	SELECT DISTINCT CLIENTE_CODIGO_POSTAL,NULL,VENTA_ENVIO_PRECIO,VENTA_MEDIO_ENVIO
-  FROM gd_esquema.Maestra
-  WHERE VENTA_MEDIO_ENVIO IS NOT NULL
+	FROM gd_esquema.Maestra
+	WHERE VENTA_MEDIO_ENVIO IS NOT NULL
 END
 
 GO
@@ -573,6 +573,12 @@ BEGIN
 	SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO
 	FROM gd_esquema.Maestra
 	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
+
+	INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
+	SELECT DISTINCT VENTA_MEDIO_PAGO,0,VENTA_MEDIO_PAGO_COSTO
+	FROM gd_esquema.Maestra
+	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
+
 END
 
 GO
@@ -649,7 +655,7 @@ END
 
 GO
 
-DROP PROCEDURE insertar_compra_producto
+
 
 CREATE PROCEDURE insertar_compra_producto
 AS
@@ -731,37 +737,39 @@ AS
 BEGIN
   DECLARE @codVenta decimal(19,0), @fecha date, @clienteDni decimal(19,0), @canalVenta nvarchar(255), @medioEnvio nvarchar(255)
   ,@medioPago nvarchar(255), @totalVenta decimal(18,2), @precioEnvio decimal(18,2),@cuponCod nvarchar(255),
-  @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2),@codPostal decimal (19,0)
+  @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2),@codPostal decimal (19,0), @envioPrecio decimal(18,2),@nombre nvarchar(255),@apellido nvarchar(255)
   DECLARE cursorvs CURSOR FOR
   SELECT DISTINCT VENTA_CODIGO, VENTA_FECHA, CLIENTE_DNI, VENTA_CANAL, VENTA_MEDIO_ENVIO, VENTA_MEDIO_PAGO, VENTA_TOTAL, 
-  VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE,CLIENTE_CODIGO_POSTAL
+  VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE,CLIENTE_CODIGO_POSTAL, VENTA_ENVIO_PRECIO,CLIENTE_NOMBRE,CLIENTE_APELLIDO
   FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL
   OPEN cursorvs
   FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
-  @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal
+  @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
-
-    INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO)
-    VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM gd_esquema.CLIENTE WHERE DNI_CLIENTE=@clienteDni), 
-            (SELECT ID_CANAL_VENTA FROM gd_esquema.CANAL_VENTA WHERE CANAL_VENTA=@canalVenta), 
-            (SELECT ID_MEDIO_ENVIO FROM gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio AND CODIGO_POSTAL=@codPostal), 
-			(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor), --Subquery returned more than 1 value. This is not permitted when the subquery follows =, !=, <, <= , >, >= or when the subquery is used as an expression. los nulls
-            @totalVenta, 
-            @precioEnvio)
-
-    IF @cuponCod IS NOT NULL
-    BEGIN
-      INSERT INTO gd_esquema.VENTA_MEDIANTE_CUPON (COD_VENTA, CODIGO_CUPON, IMPORTE)
-      VALUES (@codVenta, @cuponCod, @cuponImporte)
-    END
-    IF @descuentoConcepto = 'Otros'
-    BEGIN
-      INSERT INTO gd_esquema.VENTA_MEDIANTE_DESCUENTO_FIJO (COD_VENTA, CODIGO_DESCUENTO, IMPORTE)
-      VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM gd_esquema.DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
-    END
-    FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
-    @cuponImporte,@descuentoConcepto,@descuentoValor
+	
+	IF NOT EXISTS (SELECT 1 FROM gd_esquema.VENTA WHERE @codVenta=COD_VENTA)
+	BEGIN
+		INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO)
+		VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM gd_esquema.CLIENTE WHERE DNI_CLIENTE=@clienteDni AND NOMBRE_CLIENTE=@nombre AND APELLIDO_CLIENTE=@apellido), 
+				(SELECT ID_CANAL_VENTA FROM gd_esquema.CANAL_VENTA WHERE CANAL_VENTA=@canalVenta), 
+				(SELECT ID_MEDIO_ENVIO FROM gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio AND CODIGO_POSTAL=@codPostal AND PRECIO=@envioPrecio), 
+				(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor), --Subquery returned more than 1 value. This is not permitted when the subquery follows =, !=, <, <= , >, >= or when the subquery is used as an expression. los nulls
+				@totalVenta, 
+				@precioEnvio)
+		END
+		IF @cuponCod IS NOT NULL
+		BEGIN
+		  INSERT INTO gd_esquema.VENTA_MEDIANTE_CUPON (COD_VENTA, CODIGO_CUPON, IMPORTE)
+		  VALUES (@codVenta, @cuponCod, @cuponImporte)
+		END
+		IF @descuentoConcepto = 'Otros'
+		BEGIN
+		  INSERT INTO gd_esquema.VENTA_MEDIANTE_DESCUENTO_FIJO (COD_VENTA, CODIGO_DESCUENTO, IMPORTE)
+		  VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM gd_esquema.DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
+		END
+	   FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+	  @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido
 	END
 	CLOSE cursorvs
 	DEALLOCATE cursorvs
@@ -769,14 +777,14 @@ END
 
 GO
 
-
 CREATE PROCEDURE insertar_todo
 AS
 BEGIN
 	
 	BEGIN TRY
 		BEGIN TRANSACTION
-		exec insertar_proveedor 
+		exec insertar_proveedor
+		exec insertar_marca_categoria_y_material
 		exec insertar_productos
 		exec insertar_canales_venta
 		exec insertar_variantes
@@ -785,24 +793,15 @@ BEGIN
 		exec insertar_medio_envio_x_codigo_postal
 		exec insertar_descuentos_cupon
 		exec insertar_descuentos_fijo
--------------------------------------------HASTA ACA FUNCIONA TODO
-		exec insertar_compras --tarda mucho
-		/*
-		The statement has been terminated.
-		Msg 547, Level 16, State 0, Procedure insertar_compras, Line 14 [Batch Start Line 709]
-		The INSERT statement conflicted with the FOREIGN KEY constraint "FK_COMPRA_PRODUCTO.COD_PRODUCTO_VARIANTE". The conflict occurred in database "GD2C2022", table "gd_esquema.PRODUCTO_VARIANTE", column 'COD_PRODUCTO_VARIANTE'.
-		The statement has been terminated.
-		Msg 2627, Level 14, State 1, Procedure insertar_compras, Line 20 [Batch Start Line 709]
-		Violation of PRIMARY KEY constraint 'PK__COMPRA__BBEFA3D29DFE6B88'. Cannot insert duplicate key in object 'gd_esquema.COMPRA'. The duplicate key value is (131232).
-		The statement has been terminated
-		*/
 
-		exec insertar_medios_de_pago --cambiar nombres de cursores
-		exec insertar_descuentos_x_medio_de_pago --Error converting data type nvarchar to decimal. Line 11. guardar en variable el nombre, no el id
-		exec insertar_producto_variante --anda
+		exec insertar_compras 
+
+		exec insertar_medios_de_pago 
+		exec insertar_descuentos_x_medio_de_pago 
+		exec insertar_producto_variante
 		exec insertar_compra_producto
-		 --Violation of PRIMARY KEY constraint 'PK__VENTA_PR__54C440C8DEDAD7AA'. Cannot insert duplicate key in object 'gd_esquema.VENTA_PRODUCTO'. The duplicate key value is (0352EZPHIR4C2K5GO, 128344).
-		exec insertar_ventas --Error converting data type nvarchar to decimal. el medio de envio
+		
+		exec insertar_ventas 
 		exec insertar_venta_producto
 		COMMIT TRANSACTION
 	END TRY
@@ -829,31 +828,23 @@ exec insertar_todo
 
 
 DROP PROCEDURE insertar_proveedor 
-		DROP PROCEDURE insertar_productos
-		DROP PROCEDURE insertar_canales_venta
-		DROP PROCEDURE insertar_variantes
-		DROP PROCEDURE insertar_clientes
-		DROP PROCEDURE insertar_descuentos_compra
-		DROP PROCEDURE insertar_medio_envio_x_codigo_postal
-		DROP PROCEDURE insertar_descuentos_cupon
-		DROP PROCEDURE insertar_descuentos_fijo
--------------------------------------------HASTA ACA FUNCIONA TODO
-		DROP PROCEDURE insertar_compras --tarda mucho
-		/*
-		The statement has been terminated.
-		Msg 547, Level 16, State 0, Procedure insertar_compras, Line 14 [Batch Start Line 709]
-		The INSERT statement conflicted with the FOREIGN KEY constraint "FK_COMPRA_PRODUCTO.COD_PRODUCTO_VARIANTE". The conflict occurred in database "GD2C2022", table "gd_esquema.PRODUCTO_VARIANTE", column 'COD_PRODUCTO_VARIANTE'.
-		The statement has been terminated.
-		Msg 2627, Level 14, State 1, Procedure insertar_compras, Line 20 [Batch Start Line 709]
-		Violation of PRIMARY KEY constraint 'PK__COMPRA__BBEFA3D29DFE6B88'. Cannot insert duplicate key in object 'gd_esquema.COMPRA'. The duplicate key value is (131232).
-		The statement has been terminated
-		*/
+DROP PROCEDURE insertar_productos
+DROP PROCEDURE insertar_canales_venta
+DROP PROCEDURE insertar_variantes
+DROP PROCEDURE insertar_clientes
+DROP PROCEDURE insertar_descuentos_compra
+DROP PROCEDURE insertar_medio_envio_x_codigo_postal
+DROP PROCEDURE insertar_descuentos_cupon
+DROP PROCEDURE insertar_descuentos_fijo
 
-		DROP PROCEDURE insertar_medios_de_pago --cambiar nombres de cursores
-		DROP PROCEDURE insertar_descuentos_x_medio_de_pago --Error converting data type nvarchar to decimal. Line 11. guardar en variable el nombre, no el id
-		DROP PROCEDURE insertar_producto_variante --anda
-		DROP PROCEDURE insertar_compra_producto
-		DROP PROCEDURE insertar_venta_producto --Violation of PRIMARY KEY constraint 'PK__VENTA_PR__54C440C8DEDAD7AA'. Cannot insert duplicate key in object 'gd_esquema.VENTA_PRODUCTO'. The duplicate key value is (0352EZPHIR4C2K5GO, 128344).
-		DROP PROCEDURE insertar_ventas --Err
-		DROP PROCEDURE insertar_marca_categoria_y_material
-		DROP PROCEDURE insertar_todo ----
+DROP PROCEDURE insertar_compras 
+
+DROP PROCEDURE insertar_medios_de_pago 
+DROP PROCEDURE insertar_descuentos_x_medio_de_pago
+DROP PROCEDURE insertar_producto_variante 
+DROP PROCEDURE insertar_compra_producto
+DROP PROCEDURE insertar_venta_producto 
+DROP PROCEDURE insertar_ventas 
+DROP PROCEDURE insertar_marca_categoria_y_material
+DROP PROCEDURE insertar_todo 
+
