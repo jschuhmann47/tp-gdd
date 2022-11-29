@@ -20,9 +20,9 @@ CREATE TABLE [gd_esquema].[BI_DIM_PROVINCIA](
 GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_RANGO_ETARIO](
-  [ID_CLIENTE] decimal(19,0) IDENTITY (1,1),
+  [ID_RANGO_ETARIO] decimal(19,0) IDENTITY (1,1),
   [RANGO_ETARIO] nvarchar(255),
-  PRIMARY KEY ([ID_CLIENTE]) 
+  PRIMARY KEY ([ID_RANGO_ETARIO]) 
 );
 
 GO
@@ -75,21 +75,148 @@ CREATE TABLE [gd_esquema].[BI_DIM_TIPO_ENVIO](
   PRIMARY KEY ([ID_MEDIO_ENVIO])
 );
 
-CREATE TABLE [gd_esquema].[BI_HECHOS_COMPRAVENTA](
+CREATE TABLE [gd_esquema].[BI_DIM_PROVEEDOR](
+  [ID_PROVEEDOR] decimal(19,0), --pk no identity
+  [RAZON_SOCIAL_PROV] nvarchar(255)
+)
+
+CREATE TABLE [gd_esquema].[BI_HECHOS_COMPRAS](
     [ID_FECHA] decimal(19,0), --fk
     [CODIGO_PROVINCIA] decimal(19,0), --fk
-    [ID_CLIENTE] decimal(19,0), --fk nullable
+    [ID_PROVEEDOR] decimal(19,0), --fk
+    [COD_PROD] nvarchar(50), --fk
+    [TOTAL_COMPRA] decimal(18,2),
+);
+
+CREATE TABLE [gd_esquema].[BI_HECHOS_VENTAS](
+    [ID_FECHA] decimal(19,0), --fk
+    [CODIGO_PROVINCIA] decimal(19,0), --fk
+    [ID_CLIENTE] decimal(19,0), --fk
     [ID_CANAL_VENTA] decimal(19,0), --fk
     [ID_MEDIO_PAGO] decimal(19,0), --fk
     [ID_CATEGORIA] decimal(19,0), --fk
     [COD_PROD] nvarchar(50), --fk
-    --proveedor?
     [ID_DESC] decimal(19,0), --fk
     [ID_MEDIO_ENVIO] decimal(19,0), --fk
-    [SUBTOTAL_COMPRAVENTA] decimal(18,2),
+    [TOTAL_COMPRAVENTA] decimal(18,2),
     [TOTAL_DESCUENTOS] decimal(18,2),
     [MEDIO_ENVIO_COSTO] decimal(18,2),
     [CANAL_VENTA_COSTO] decimal(18,2)
 );
 
+CREATE TABLE [gd_esquema].[BI_HECHOS_DESCUENTOS]( --los desc de compras no importa discriminarlos, van directo en el total
+    [DESCUENTO_ID] DECIMAL(19,0) --fk
+    [ID_CANAL_VENTA] DECIMAL(18,0) --fk
+    [ID_FECHA] DECIMAL(19,0) --fk
+    [TOTAL_DESCUENTO] DECIMAL(18,2)
+);
+
+
 GO
+
+ALTER TABLE [gd_esquema].[BI_HECHOS_COMPRAVENTA] ADD CONSTRAINT [ID_FECHA] FOREIGN KEY ([ID_FECHA]) REFERENCES [gd_esquema].[BI_DIM_TIEMPO]([ID_FECHA])
+--etc
+
+
+
+--MIGRACION
+
+
+
+
+
+
+
+
+
+
+
+
+
+--VISTAS
+
+/*
+Las ganancias mensuales de cada canal de venta.
+Se entiende por ganancias al total de las ventas, menos el total de las
+compras, menos los costos de transacción totales aplicados asociados los
+medios de pagos utilizados en las mismas.
+*/
+
+CREATE VIEW ganancias_mensuales_x_canal_venta (CANAL_VENTA, MES, ANIO, GANANCIAS)
+AS
+BEGIN
+
+END
+
+-- Los 5 productos con mayor rentabilidad anual, con sus respectivos %
+-- Se entiende por rentabilidad a los ingresos generados por el producto
+-- (ventas) durante el periodo menos la inversión realizada en el producto
+-- (compras) durante el periodo, todo esto sobre dichos ingresos.
+-- Valor expresado en porcentaje.
+-- Para simplificar, no es necesario tener en cuenta los descuentos aplicados.
+
+
+-- Las 5 categorías de productos más vendidos por rango etario de clientes
+-- por mes.
+
+
+
+-- Total de Ingresos por cada medio de pago por mes, descontando los costos
+-- por medio de pago (en caso que aplique) y descuentos por medio de pago
+-- (en caso que aplique)
+
+
+-- Importe total en descuentos aplicados según su tipo de descuento, por
+-- canal de venta, por mes. Se entiende por tipo de descuento como los
+-- correspondientes a envío, medio de pago, cupones, etc)
+
+
+-- Porcentaje de envíos realizados a cada Provincia por mes. El porcentaje
+-- debe representar la cantidad de envíos realizados a cada provincia sobre
+-- total de envío mensuales.
+
+
+-- Valor promedio de envío por Provincia por Medio De Envío anual.
+
+
+-- Aumento promedio de precios de cada proveedor anual. Para calcular este
+-- indicador se debe tomar como referencia el máximo precio por año menos
+-- el mínimo todo esto divido el mínimo precio del año. Teniendo en cuenta
+-- que los precios siempre van en aumento.
+
+
+-- Los 3 productos con mayor cantidad de reposición por mes.
+
+
+--FUNCIONES
+
+CREATE FUNCTION [gd_esquema].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMAL(19,0) AS
+	BEGIN
+		DECLARE @edad_id DECIMAL(19,0), @edad INT, @fecha_actual DATE
+		SELECT @edad = (DATEDIFF(DAY, @fecha, GETDATE()) / 365)
+
+		SELECT @edad_id =
+			CASE 
+				WHEN @edad BETWEEN 0 AND 24 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '<25')
+				WHEN @edad BETWEEN 25 AND 34 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '25-35')
+        WHEN @edad BETWEEN 35 AND 55 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '35-55')
+				ELSE (SELECT edad_id FROM [N&M'S].bi_edad WHERE rango_edad = '>55')
+			END
+
+		RETURN @edad_id
+	END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_id_tiempo(@fecha DATE) RETURNS DECIMAL(19,0) AS
+	BEGIN
+    DECLARE @anioFecha INT, @mesFecha INT, @idTiempo INT
+
+    SET @anio_de_fecha = DATEPART(YEAR, @fecha)
+    SET @cuatrimestre_de_fecha = DATEPART(QUARTER, @fecha)
+
+    SELECT @id_tiempo = tiempo_id
+    FROM [gd_esquema].bi_Tiempo
+    WHERE anio = @anio_de_fecha AND cuatrimestre = @cuatrimestre_de_fecha
+
+    RETURN @id_tiempo
+END
