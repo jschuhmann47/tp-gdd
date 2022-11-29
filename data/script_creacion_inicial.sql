@@ -1,4 +1,4 @@
---USE [Prueba_gestion_tres]
+--USE [GD2C2022]
 --GO
                                 --Adapatar a cada uno.
 --create schema gd_esquema
@@ -362,17 +362,19 @@ CREATE PROCEDURE insertar_productos
 AS
 BEGIN
   DECLARE @prodCodigo nvarchar(50),@prodNombre nvarchar(50), @prodDesc nvarchar(50), @marca nvarchar(255),@categoria nvarchar(255), @material nvarchar(50)
-  DECLARE cursorc CURSOR FOR SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
+  DECLARE cursord CURSOR FOR SELECT DISTINCT PRODUCTO_CODIGO,PRODUCTO_NOMBRE,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_CATEGORIA,PRODUCTO_MATERIAL 
       FROM gd_esquema.Maestra
       WHERE PRODUCTO_CODIGO IS NOT NULL
-  OPEN cursorc
-	FETCH NEXT FROM cursorc INTO @prodCodigo,@prodNombre,@prodDesc,@marca,@categoria,@material
+  OPEN cursord
+	FETCH NEXT FROM cursord INTO @prodCodigo,@prodNombre,@prodDesc,@marca,@categoria,@material
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
     INSERT INTO gd_esquema.PRODUCTO (COD_PROD,NOMBRE_PROD,DESCRIPCION_PROD,ID_MARCA_PROD,ID_CATEGORIA_PROD,ID_MATERIAL_PROD)
     VALUES (@prodCodigo,@prodNombre,@prodDesc,(SELECT ID_MARCA FROM gd_esquema.MARCA WHERE MARCA=@marca),(SELECT ID_CATEGORIA FROM gd_esquema.CATEGORIA WHERE CATEGORIA=@categoria),(SELECT ID_MATERIAL FROM gd_esquema.MATERIAL WHERE MATERIAL=@material))
-    FETCH NEXT FROM cursorc INTO @prodCodigo,@prodNombre,@prodDesc,@marca,@categoria,@material
+    FETCH NEXT FROM cursord INTO @prodCodigo,@prodNombre,@prodDesc,@marca,@categoria,@material
   END
+  CLOSE cursord
+  DEALLOCATE cursord
 END
 
 GO
@@ -393,21 +395,21 @@ CREATE PROCEDURE insertar_variantes
 AS
 BEGIN
 	DECLARE @variante nvarchar(50),@tipo nvarchar(50),@codigo nvarchar(50)
-	DECLARE cursorcc CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE_CODIGO 
+	DECLARE cursorce CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE_CODIGO 
 								FROM gd_esquema.Maestra
 								WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
-	OPEN cursorcc
-	FETCH NEXT FROM cursorcc INTO @variante,@tipo,@codigo
+	OPEN cursorce
+	FETCH NEXT FROM cursorce INTO @variante,@tipo,@codigo
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 		INSERT INTO gd_esquema.TIPO_VARIANTE (CODIGO_TIPO_VAR,DESCRIPCION_TIPO_VAR)
 		VALUES (@codigo,@tipo)
 		INSERT INTO gd_esquema.VARIANTE (CODIGO_VAR,CODIGO_TIPO_VAR,VALOR) VALUES (@codigo,
 		(SELECT TOP 1 CODIGO_TIPO_VAR FROM gd_esquema.TIPO_VARIANTE WHERE DESCRIPCION_TIPO_VAR = @tipo) ,@variante)
-		FETCH NEXT FROM cursorcc INTO @variante,@tipo,@codigo
+		FETCH NEXT FROM cursorce INTO @variante,@tipo,@codigo
 	END
-	CLOSE cursorcc
-	DEALLOCATE cursorcc
+	CLOSE cursorce
+	DEALLOCATE cursorce
 END
 
 --DROP  PROCEDURE insertar_variantes
@@ -501,33 +503,32 @@ GO
 CREATE PROCEDURE insertar_compras
 AS
 BEGIN
-	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@total decimal(18,2),@cuit nvarchar(50),@codDescuentoCompra decimal(19,0),@prodVarianteCod nvarchar(50)
+	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@totalCompra decimal(18,2),@cuit nvarchar(50)--,@codDescuentoCompra decimal(19,0),@prodVarianteCod nvarchar(50)
 	DECLARE cursorw CURSOR FOR 
-	SELECT DISTINCT COMPRA_NUMERO,COMPRA_FECHA,COMPRA_MEDIO_PAGO,COMPRA_TOTAL,PROVEEDOR_CUIT,DESCUENTO_COMPRA_CODIGO,PRODUCTO_VARIANTE_CODIGO
+	SELECT DISTINCT COMPRA_NUMERO,COMPRA_FECHA,COMPRA_MEDIO_PAGO,COMPRA_TOTAL,PROVEEDOR_CUIT--,DESCUENTO_COMPRA_CODIGO,PRODUCTO_VARIANTE_CODIGO
 	FROM gd_esquema.Maestra WHERE COMPRA_NUMERO IS NOT NULL
 	OPEN cursorw
-	FETCH cursorw INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
+	FETCH cursorw INTO @codCompra,@fecha,@medioPago,@totalCompra,@cuit--,@codDescuentoCompra,@prodVarianteCod
 	WHILE(@@FETCH_STATUS = 0)
 	BEGIN
-		DECLARE @totalCompra decimal(18,2)
-		INSERT INTO gd_esquema.COMPRA_PRODUCTO (CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_COMPRA,COD_PRODUCTO_VARIANTE) 
-		SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,  @totalCompra=SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL, @codCompra,@prodVarianteCod
-		FROM gd_esquema.Maestra 
-    WHERE COMPRA_NUMERO = @codCompra
-    GROUP BY COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO
+		--DECLARE @totalCompra decimal(18,2)
+		--INSERT INTO gd_esquema.COMPRA_PRODUCTO (CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_COMPRA,COD_PRODUCTO_VARIANTE) 
+		--SELECT COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO, @totalCompra=SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL, @codCompra,@prodVarianteCod
+		--FROM gd_esquema.Maestra 
+   -- WHERE COMPRA_NUMERO = @codCompra
+   -- GROUP BY COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO
     -- ya existe insertar_compra_producto
-		
 
 		INSERT INTO gd_esquema.COMPRA (COD_COMPRA,FECHA_COMPRA,ID_MEDIO_PAGO, TOTAL_COMPRA,CUIT_PROV)
 		VALUES (@codCompra,@fecha,(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago),@totalCompra,@cuit)
-
+		/*
 		IF  @codDescuentoCompra IS NOT NULL
 			begin
 				INSERT INTO gd_esquema.DESCUENTO_X_COMPRA (COD_COMPRA,CODIGO_DESC_COMPRA)
 				VALUES (@codCompra,@codDescuentoCompra)
 			end
-
-		FETCH cursorw INTO @codCompra,@fecha,@medioPago,@total,@cuit,@codDescuentoCompra,@prodVarianteCod
+		*/
+		FETCH cursorw INTO @codCompra,@fecha,@medioPago,@totalCompra,@cuit--,@codDescuentoCompra,@prodVarianteCod
 	END
 	CLOSE cursorw
 	DEALLOCATE cursorw
@@ -536,33 +537,42 @@ END
 
 GO
 
+--CREATE PROCEDURE insertar_medios_de_pago
+--AS
+--BEGIN
+--  DECLARE @medioPago nvarchar(255),@valorDescuento decimal(18,2),@costoTransaccion decimal(18,2),@medioPagoId decimal(19,0),@descuentoConcepto nvarchar(255)
+
+--  DECLARE cursorf CURSOR FOR
+--  SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO,VENTA_DESCUENTO_CONCEPTO
+--  FROM gd_esquema.Maestra
+--  WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
+--  OPEN cursorf
+--  FETCH cursorf INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
+--  WHILE (@@FETCH_STATUS = 0)
+--  BEGIN
+    
+--      INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
+--      VALUES (@medioPago,@valorDescuento,@costoTransaccion)
+--    --ELSE
+--    --BEGIN
+--      --INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
+--      --VALUES (@medioPago,0,@costoTransaccion)
+--    --END
+--	FETCH cursorf INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
+--  END
+--  CLOSE cursorf
+--  DEALLOCATE cursorf
+--END
+
+go
+
 CREATE PROCEDURE insertar_medios_de_pago
 AS
 BEGIN
-  DECLARE @medioPago nvarchar(255),@valorDescuento decimal(18,2),@costoTransaccion decimal(18,2),@medioPagoId decimal(19,0),@descuentoConcepto nvarchar(255)
-
-  DECLARE cursorc CURSOR FOR
-  SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO,VENTA_DESCUENTO_CONCEPTO
-  FROM gd_esquema.Maestra
-  WHERE VENTA_MEDIO_PAGO IS NOT NULL
-  OPEN cursorc
-  FETCH cursorc INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
-  WHILE (@@FETCH_STATUS = 0)
-  BEGIN
-    IF (@descuentoConcepto != 'Otros')
-    BEGIN
-      INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
-      VALUES (@medioPago,@valorDescuento,@costoTransaccion)
-    END
-    ELSE
-    BEGIN
-      INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
-      VALUES (@medioPago,0,@costoTransaccion)
-    END
-	FETCH cursorc INTO @medioPago,@valorDescuento,@costoTransaccion,@descuentoConcepto
-  END
-  CLOSE cursorc
-  DEALLOCATE cursorc
+	INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
+	SELECT DISTINCT VENTA_MEDIO_PAGO,VENTA_DESCUENTO_IMPORTE,VENTA_MEDIO_PAGO_COSTO
+	FROM gd_esquema.Maestra
+	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
 END
 
 GO
@@ -570,21 +580,30 @@ GO
 CREATE PROCEDURE insertar_descuentos_x_medio_de_pago
 AS
 BEGIN
-  DECLARE @medioPagoId decimal(19,0),@porcDescuento decimal(18,2)
-  DECLARE cursorc CURSOR FOR
-  SELECT DISTINCT VENTA_MEDIO_PAGO, VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL PORCENTAJE_DESCUENTO 
+  DECLARE @medioPago nvarchar(255),@porcDescuento decimal(18,2),@importe decimal(18,2),@concepto nvarchar(255)
+  DECLARE cursorm CURSOR FOR
+  SELECT DISTINCT VENTA_MEDIO_PAGO, VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL PORCENTAJE_DESCUENTO,VENTA_DESCUENTO_IMPORTE,VENTA_DESCUENTO_CONCEPTO
   FROM gd_esquema.Maestra
-  WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_IMPORTE IS NOT NULL
-  OPEN cursorc
-  FETCH cursorc INTO @medioPagoId,@porcDescuento
+  WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_IMPORTE IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
+  OPEN cursorm
+  FETCH cursorm INTO @medioPago,@porcDescuento,@importe,@concepto
   WHILE (@@FETCH_STATUS = 0)
   BEGIN
-    INSERT INTO gd_esquema.DESCUENTO_X_MEDIO_DE_PAGO (ID_MEDIO_PAGO,CODIGO_DESC_MP)
-    VALUES (@medioPagoId,(SELECT CODIGO_DESC_MP FROM  DESCUENTO_MEDIO_PAGO WHERE PORCENTAJE_DESCUENTO=@porcDescuento))
-    FETCH cursorc INTO @medioPagoId,@porcDescuento
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.DESCUENTO_MEDIO_PAGO WHERE PORCENTAJE_DESCUENTO=@porcDescuento)
+		BEGIN
+			INSERT INTO gd_esquema.DESCUENTO_MEDIO_PAGO (PORCENTAJE_DESCUENTO)
+			VALUES (@porcDescuento)
+		END
+		INSERT INTO gd_esquema.DESCUENTO_X_MEDIO_DE_PAGO (ID_MEDIO_PAGO,CODIGO_DESC_MP)
+		VALUES (
+			(SELECT DISTINCT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@importe),
+			(SELECT DISTINCT CODIGO_DESC_MP FROM gd_esquema.DESCUENTO_MEDIO_PAGO WHERE PORCENTAJE_DESCUENTO=@porcDescuento) --more than 1 result
+		)
+	
+	FETCH cursorm INTO @medioPago,@porcDescuento,@importe,@concepto
   END
-  CLOSE cursorc
-  DEALLOCATE cursorc
+  CLOSE cursorm
+  DEALLOCATE cursorm
 END
 
 GO
@@ -595,7 +614,7 @@ AS
 BEGIN
   DECLARE @id nvarchar(50)
   SELECT @id=CODIGO_VAR FROM gd_esquema.VARIANTE
-  WHERE VALOR = @VARIANTE AND (SELECT CODIGO_TIPO_VAR FROM TIPO_VARIANTE WHERE DESCRIPCION_TIPO_VAR = @tipoVariante) = CODIGO_TIPO_VAR
+  WHERE VALOR = @VARIANTE AND (SELECT CODIGO_TIPO_VAR FROM gd_esquema.TIPO_VARIANTE WHERE DESCRIPCION_TIPO_VAR = @tipoVariante) = CODIGO_TIPO_VAR
   RETURN @id
 END
 
@@ -605,10 +624,10 @@ CREATE PROCEDURE insertar_producto_variante
 AS
 BEGIN
   DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50)
-  DECLARE cursorc CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION
+  DECLARE cursorv CURSOR FOR SELECT DISTINCT PRODUCTO_VARIANTE_CODIGO,PRODUCTO_CODIGO,PRODUCTO_TIPO_VARIANTE,PRODUCTO_VARIANTE,PRODUCTO_DESCRIPCION
   FROM gd_esquema.Maestra WHERE PRODUCTO_VARIANTE_CODIGO IS NOT NULL
-  OPEN cursorc
-  FETCH NEXT FROM cursorc INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
+  OPEN cursorv
+  FETCH NEXT FROM cursorv INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
     IF NOT EXISTS (SELECT 1 FROM gd_esquema.PRODUCTO_VARIANTE WHERE CODIGO_VAR = @prodVarianteCod)
@@ -622,34 +641,87 @@ BEGIN
       SET STOCK += @stock
       WHERE CODIGO_VAR = @prodVarianteCod
     END
-    FETCH NEXT FROM cursorc INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
+    FETCH NEXT FROM cursorv INTO @prodVarianteCod,@prodCod,@variante,@tipoVariante,@descripcion
   END
-  CLOSE cursorc
-  DEALLOCATE cursorc
+  CLOSE cursorv
+  DEALLOCATE cursorv
 END
 
 GO
 
+DROP PROCEDURE insertar_compra_producto
+
 CREATE PROCEDURE insertar_compra_producto
 AS
 BEGIN
-	INSERT INTO gd_esquema.COMPRA_PRODUCTO (COD_COMPRA,COD_PRODUCTO_VARIANTE,CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL)
-	SELECT COMPRA_NUMERO,PRODUCTO_VARIANTE_CODIGO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL
+	
+	--Violation of PRIMARY KEY constraint 'PK__COMPRA_P__E31C4D8D94175AED'. Cannot insert duplicate key in object 'gd_esquema.COMPRA_PRODUCTO'. The duplicate key value is (131232, 015HPH1YB6HEBMWAG).
+	DECLARE @compraNum decimal(19,0),@prodVarCod nvarchar(50),@cant decimal(18,0),@precio decimal(18,2),@totalProd decimal (18,2)
+	DECLARE csd CURSOR FOR
+	SELECT COMPRA_NUMERO,PRODUCTO_VARIANTE_CODIGO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL_PRODUCTO
 	FROM gd_esquema.Maestra
 	WHERE COMPRA_NUMERO IS NOT NULL AND PRODUCTO_VARIANTE_CODIGO IS NOT NULL
 	GROUP BY COMPRA_NUMERO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,PRODUCTO_VARIANTE_CODIGO
+	OPEN csd
+	FETCH NEXT FROM csd INTO  @compraNum ,@prodVarCod ,@cant,@precio ,@totalProd
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.COMPRA_PRODUCTO WHERE COD_COMPRA=@compraNum AND COD_PRODUCTO_VARIANTE=@prodVarCod)
+		BEGIN
+		INSERT INTO gd_esquema.COMPRA_PRODUCTO (COD_COMPRA,COD_PRODUCTO_VARIANTE,CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL)
+		VALUES (@compraNum,@prodVarCod,@cant,@precio,@totalProd)
+		END
+		ELSE
+		BEGIN
+			UPDATE gd_esquema.COMPRA_PRODUCTO
+			SET CANTIDAD+=@cant --Arithmetic overflow error converting numeric to data type numeric.
+			WHERE COD_COMPRA=@compraNum AND COD_PRODUCTO_VARIANTE=@prodVarCod
+			UPDATE gd_esquema.COMPRA_PRODUCTO
+			SET PRECIO_TOTAL=PRECIO_UNIT*CANTIDAD
+			WHERE COD_COMPRA=@compraNum AND COD_PRODUCTO_VARIANTE=@prodVarCod
+		END
+		FETCH NEXT FROM csd INTO  @compraNum ,@prodVarCod ,@cant,@precio ,@totalProd
+	END
+	CLOSE csd
+	DEALLOCATE csd
 END
+
+
 
 GO
 
 CREATE PROCEDURE insertar_venta_producto
 AS
 BEGIN
-	INSERT INTO gd_esquema.VENTA_PRODUCTO (COD_VENTA,COD_PRODUCTO_VARIANTE,CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL)
+	DECLARE @ventaCod decimal(19,0),@prodVarCod nvarchar(50),@cant decimal(18,0),@precio decimal(18,2),@totalProd decimal(18,2)
+	DECLARE xd CURSOR FOR
 	SELECT VENTA_CODIGO,PRODUCTO_VARIANTE_CODIGO,VENTA_PRODUCTO_CANTIDAD,VENTA_PRODUCTO_PRECIO,SUM(VENTA_PRODUCTO_CANTIDAD*VENTA_PRODUCTO_PRECIO) PRECIO_TOTAL
 	FROM gd_esquema.Maestra
 	WHERE VENTA_CODIGO IS NOT NULL AND PRODUCTO_VARIANTE_CODIGO IS NOT NULL
 	GROUP BY VENTA_CODIGO,PRODUCTO_VARIANTE_CODIGO,VENTA_PRODUCTO_CANTIDAD,VENTA_PRODUCTO_PRECIO
+	OPEN xd
+	FETCH NEXT FROM xd INTO  @ventaCod ,@prodVarCod ,@cant ,@precio ,@totalProd
+	WHILE (@@FETCH_STATUS = 0)
+	BEGIN
+	IF NOT EXISTS (SELECT 1 FROM gd_esquema.VENTA_PRODUCTO WHERE COD_VENTA=@ventaCod AND COD_PRODUCTO_VARIANTE=@prodVarCod)
+		BEGIN
+		INSERT INTO gd_esquema.VENTA_PRODUCTO (COD_VENTA,COD_PRODUCTO_VARIANTE,CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL)
+		VALUES (@ventaCod,@prodVarCod,@cant,@precio,@totalProd)
+		END
+		ELSE
+		BEGIN
+			UPDATE gd_esquema.VENTA_PRODUCTO
+			SET CANTIDAD+=@cant 
+			WHERE COD_VENTA=@ventaCod AND COD_PRODUCTO_VARIANTE=@prodVarCod
+			UPDATE gd_esquema.VENTA_PRODUCTO
+			SET PRECIO_TOTAL=PRECIO_UNIT*CANTIDAD
+			WHERE COD_VENTA=@ventaCod AND COD_PRODUCTO_VARIANTE=@prodVarCod
+		END
+		FETCH NEXT FROM xd INTO  @ventaCod ,@prodVarCod ,@cant ,@precio ,@totalProd
+	END
+	CLOSE xd
+	DEALLOCATE xd
 END
 
 GO
@@ -657,23 +729,24 @@ GO
 CREATE PROCEDURE insertar_ventas
 AS
 BEGIN
-  DECLARE @codVenta decimal(19,0), @fecha date, @clienteDni decimal(19,0), @canalVenta decimal(19,0), @medioEnvio decimal(19,0), 
-  @codigoPostal decimal(19,0),@medioPago decimal(19,0), @totalVenta decimal(18,2), @precioEnvio decimal(18,2),@cuponCod nvarchar(255),
-  @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2)
-  DECLARE cursorc CURSOR FOR
+  DECLARE @codVenta decimal(19,0), @fecha date, @clienteDni decimal(19,0), @canalVenta nvarchar(255), @medioEnvio nvarchar(255)
+  ,@medioPago nvarchar(255), @totalVenta decimal(18,2), @precioEnvio decimal(18,2),@cuponCod nvarchar(255),
+  @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2),@codPostal decimal (19,0)
+  DECLARE cursorvs CURSOR FOR
   SELECT DISTINCT VENTA_CODIGO, VENTA_FECHA, CLIENTE_DNI, VENTA_CANAL, VENTA_MEDIO_ENVIO, VENTA_MEDIO_PAGO, VENTA_TOTAL, 
-  VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE
+  VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE,CLIENTE_CODIGO_POSTAL
   FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL
-  OPEN cursorc
-  FETCH cursorc INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
-  @cuponImporte,@descuentoConcepto,@descuentoValor
+  OPEN cursorvs
+  FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+  @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
 
     INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO)
-    VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM CLIENTE WHERE DNI_CLIENTE=@clienteDni), 
-            (SELECT ID_CANAL_VENTA FROM CANAL_VENTA WHERE CANAL_VENTA=@canalVenta), 
-            (SELECT ID_MEDIO_ENVIO FROM MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio), (SELECT ID_MEDIO_PAGO FROM MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago), 
+    VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM gd_esquema.CLIENTE WHERE DNI_CLIENTE=@clienteDni), 
+            (SELECT ID_CANAL_VENTA FROM gd_esquema.CANAL_VENTA WHERE CANAL_VENTA=@canalVenta), 
+            (SELECT ID_MEDIO_ENVIO FROM gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio AND CODIGO_POSTAL=@codPostal), 
+			(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor), --Subquery returned more than 1 value. This is not permitted when the subquery follows =, !=, <, <= , >, >= or when the subquery is used as an expression. los nulls
             @totalVenta, 
             @precioEnvio)
 
@@ -685,48 +758,102 @@ BEGIN
     IF @descuentoConcepto = 'Otros'
     BEGIN
       INSERT INTO gd_esquema.VENTA_MEDIANTE_DESCUENTO_FIJO (COD_VENTA, CODIGO_DESCUENTO, IMPORTE)
-      VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
+      VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM gd_esquema.DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor) 
     END
-    FETCH cursorc INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+    FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
     @cuponImporte,@descuentoConcepto,@descuentoValor
 	END
-	CLOSE cursorc
-	DEALLOCATE cursorc
+	CLOSE cursorvs
+	DEALLOCATE cursorvs
 END
 
 GO
 
 
-exec insertar_proveedor 
-exec insertar_productos
-exec insertar_canales_venta
-exec insertar_variantes
-exec insertar_clientes
-exec insertar_descuentos_compra
-exec insertar_medio_envio_x_codigo_postal
-exec insertar_descuentos_cupon
-exec insertar_descuentos_fijo
-
-
+CREATE PROCEDURE insertar_todo
+AS
+BEGIN
+	
+	BEGIN TRY
+		BEGIN TRANSACTION
+		exec insertar_proveedor 
+		exec insertar_productos
+		exec insertar_canales_venta
+		exec insertar_variantes
+		exec insertar_clientes
+		exec insertar_descuentos_compra
+		exec insertar_medio_envio_x_codigo_postal
+		exec insertar_descuentos_cupon
+		exec insertar_descuentos_fijo
 -------------------------------------------HASTA ACA FUNCIONA TODO
+		exec insertar_compras --tarda mucho
+		/*
+		The statement has been terminated.
+		Msg 547, Level 16, State 0, Procedure insertar_compras, Line 14 [Batch Start Line 709]
+		The INSERT statement conflicted with the FOREIGN KEY constraint "FK_COMPRA_PRODUCTO.COD_PRODUCTO_VARIANTE". The conflict occurred in database "GD2C2022", table "gd_esquema.PRODUCTO_VARIANTE", column 'COD_PRODUCTO_VARIANTE'.
+		The statement has been terminated.
+		Msg 2627, Level 14, State 1, Procedure insertar_compras, Line 20 [Batch Start Line 709]
+		Violation of PRIMARY KEY constraint 'PK__COMPRA__BBEFA3D29DFE6B88'. Cannot insert duplicate key in object 'gd_esquema.COMPRA'. The duplicate key value is (131232).
+		The statement has been terminated
+		*/
 
-exec insertar_compras --tarda mucho
-/*
-The statement has been terminated.
-Msg 547, Level 16, State 0, Procedure insertar_compras, Line 14 [Batch Start Line 709]
-The INSERT statement conflicted with the FOREIGN KEY constraint "FK_COMPRA_PRODUCTO.COD_PRODUCTO_VARIANTE". The conflict occurred in database "GD2C2022", table "gd_esquema.PRODUCTO_VARIANTE", column 'COD_PRODUCTO_VARIANTE'.
-The statement has been terminated.
-Msg 2627, Level 14, State 1, Procedure insertar_compras, Line 20 [Batch Start Line 709]
-Violation of PRIMARY KEY constraint 'PK__COMPRA__BBEFA3D29DFE6B88'. Cannot insert duplicate key in object 'gd_esquema.COMPRA'. The duplicate key value is (131232).
-The statement has been terminated
-*/
+		exec insertar_medios_de_pago --cambiar nombres de cursores
+		exec insertar_descuentos_x_medio_de_pago --Error converting data type nvarchar to decimal. Line 11. guardar en variable el nombre, no el id
+		exec insertar_producto_variante --anda
+		exec insertar_compra_producto
+		 --Violation of PRIMARY KEY constraint 'PK__VENTA_PR__54C440C8DEDAD7AA'. Cannot insert duplicate key in object 'gd_esquema.VENTA_PRODUCTO'. The duplicate key value is (0352EZPHIR4C2K5GO, 128344).
+		exec insertar_ventas --Error converting data type nvarchar to decimal. el medio de envio
+		exec insertar_venta_producto
+		COMMIT TRANSACTION
+	END TRY
+	BEGIN CATCH 
+        SELECT
+            ERROR_NUMBER() AS ErrorNumber,
+            ERROR_SEVERITY() AS ErrorSeverity,
+            ERROR_STATE() AS ErrorState,
+            ERROR_PROCEDURE() AS ErrorProcedure,
+            ERROR_LINE() AS ErrorLine,
+            ERROR_MESSAGE() AS ErrorMessage
+
+            ROLLBACK TRANSACTION
+    END CATCH
+	
+END
+
+GO
+
+--drop procedure insertar_todo
+
+exec insertar_todo
 
 
-exec insertar_medios_de_pago --cambiar nombres de cursores
-exec insertar_descuentos_x_medio_de_pago --Error converting data type nvarchar to decimal. Line 11. guardar en variable el nombre, no el id
-exec insertar_producto_variante --anda
-exec insertar_compra_producto
-exec insertar_venta_producto --Violation of PRIMARY KEY constraint 'PK__VENTA_PR__54C440C8DEDAD7AA'. Cannot insert duplicate key in object 'gd_esquema.VENTA_PRODUCTO'. The duplicate key value is (0352EZPHIR4C2K5GO, 128344).
-exec insertar_ventas --Error converting data type nvarchar to decimal. el medio de envio
 
-COMMIT
+DROP PROCEDURE insertar_proveedor 
+		DROP PROCEDURE insertar_productos
+		DROP PROCEDURE insertar_canales_venta
+		DROP PROCEDURE insertar_variantes
+		DROP PROCEDURE insertar_clientes
+		DROP PROCEDURE insertar_descuentos_compra
+		DROP PROCEDURE insertar_medio_envio_x_codigo_postal
+		DROP PROCEDURE insertar_descuentos_cupon
+		DROP PROCEDURE insertar_descuentos_fijo
+-------------------------------------------HASTA ACA FUNCIONA TODO
+		DROP PROCEDURE insertar_compras --tarda mucho
+		/*
+		The statement has been terminated.
+		Msg 547, Level 16, State 0, Procedure insertar_compras, Line 14 [Batch Start Line 709]
+		The INSERT statement conflicted with the FOREIGN KEY constraint "FK_COMPRA_PRODUCTO.COD_PRODUCTO_VARIANTE". The conflict occurred in database "GD2C2022", table "gd_esquema.PRODUCTO_VARIANTE", column 'COD_PRODUCTO_VARIANTE'.
+		The statement has been terminated.
+		Msg 2627, Level 14, State 1, Procedure insertar_compras, Line 20 [Batch Start Line 709]
+		Violation of PRIMARY KEY constraint 'PK__COMPRA__BBEFA3D29DFE6B88'. Cannot insert duplicate key in object 'gd_esquema.COMPRA'. The duplicate key value is (131232).
+		The statement has been terminated
+		*/
+
+		DROP PROCEDURE insertar_medios_de_pago --cambiar nombres de cursores
+		DROP PROCEDURE insertar_descuentos_x_medio_de_pago --Error converting data type nvarchar to decimal. Line 11. guardar en variable el nombre, no el id
+		DROP PROCEDURE insertar_producto_variante --anda
+		DROP PROCEDURE insertar_compra_producto
+		DROP PROCEDURE insertar_venta_producto --Violation of PRIMARY KEY constraint 'PK__VENTA_PR__54C440C8DEDAD7AA'. Cannot insert duplicate key in object 'gd_esquema.VENTA_PRODUCTO'. The duplicate key value is (0352EZPHIR4C2K5GO, 128344).
+		DROP PROCEDURE insertar_ventas --Err
+		DROP PROCEDURE insertar_marca_categoria_y_material
+		DROP PROCEDURE insertar_todo ----
