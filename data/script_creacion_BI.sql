@@ -86,6 +86,7 @@ CREATE TABLE [gd_esquema].[BI_HECHOS_COMPRAS](
     [ID_PROVEEDOR] decimal(19,0), --fk
     [COD_PROD] nvarchar(50), --fk
     [TOTAL_PRODUCTO] decimal(18,2),
+    [CANTIDAD_PRODUCTO] decimal(19,0),
     [TOTAL_COMPRA] decimal(18,2)
 );
 
@@ -103,6 +104,7 @@ CREATE TABLE [gd_esquema].[BI_HECHOS_VENTAS](
     [TOTAL_VENTA] decimal(18,2), --NETO
     [TOTAL_DESCUENTOS] decimal(18,2),
     [MEDIO_ENVIO_COSTO] decimal(18,2),
+    [MEDIO_PAGO_COSTO] decimal(18,2),
     [CANAL_VENTA_COSTO] decimal(18,2),
     [CANTIDAD_PRODUCTO] decimal(19,0),
     [TOTAL_PRODUCTO] decimal(18,2)
@@ -256,7 +258,7 @@ GO
 -- Valor expresado en porcentaje.
 -- Para simplificar, no es necesario tener en cuenta los descuentos aplicados.
 
-CREATE VIEW top_5_productos_x_rentabilidad (...)
+CREATE VIEW top_5_productos_x_rentabilidad (NOMBRE_PRODUCTO,RENTABILIDAD)
 AS
   BEGIN
   SELECT TOP 5 NOMBRE_PROD,obtener_rentabilidad_producto(COD_PROD) RENTABILIDAD
@@ -267,11 +269,13 @@ GO
 
 -- Las 5 categorías de productos más vendidos por rango etario de clientes
 -- por mes.
-CREATE VIEW top_5_categorias_x_rango_etario_x_mes (...)
+CREATE VIEW top_5_categorias_x_rango_etario_x_mes (RANGO_ETARIO,CANTIDAD_PRODUCTO,RANKING)
 AS
   BEGIN
     SELECT 
-    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=obtener_id_rango_etario(fecha_nac)),CATEGORIA,COUNT(CANTIDAD_PRODUCTO),
+    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=obtener_id_rango_etario(fecha_nac)),
+    CATEGORIA,
+    COUNT(CANTIDAD_PRODUCTO),
     ROW_NUMBER() OVER (PARTITION BY CATEGORIA Order by COUNT(CANTIDAD_PRODUCTO) DESC) AS Ranking
     FROM [gd_esquema].BI_HECHOS_VENTAS
     WHERE Ranking <=5
@@ -283,6 +287,17 @@ GO
 -- Total de Ingresos por cada medio de pago por mes, descontando los costos
 -- por medio de pago (en caso que aplique) y descuentos por medio de pago
 -- (en caso que aplique)
+CREATE VIEW total_ingresos_medio_pago_x_mes (...)
+AS
+  BEGIN
+    SELECT (SELECT MEDIO FROM [gd_esquema].BI_DIM_MEDIO_PAGO m WHERE ID_MEDIO_PAGO=m.ID_MEDIO_PAGO),
+    MES,
+    ANIO,
+    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO (asi no deberia sumarse, sumar uno por cada venta)) - SUM(DESCUENTOS TODO)
+    FROM [gd_esquema].BI_HECHOS_VENTAS
+    GROUP BY MEDIO_PAGO,MES,ANIO
+  END
+GO
 
 
 -- Importe total en descuentos aplicados según su tipo de descuento, por
@@ -305,6 +320,17 @@ GO
 
 
 -- Los 3 productos con mayor cantidad de reposición por mes.
+CREATE VIEW top_3_prod_mayor_reposicion_x_mes (PRODUCTO,MES,ANIO,CANTIDAD_COMPRADA,RANKING)
+AS
+  BEGIN
+    SELECT NOMBRE_PROD,MES,ANIO,
+    SUM(CANTIDAD_PRODUCTO) CANTIDAD_COMPRADA,
+    ROW_NUMBER() OVER (PARTITION BY MES,ANIO Order by SUM(CANTIDAD_PRODUCTO) DESC) AS Ranking
+    FROM [gd_esquema].BI_HECHOS_COMPRAS c
+    JOIN [gd_esquema].BI_DIM_PRODUCTO p ON p.COD_PROD=c.COD_PROD
+    GROUP BY NOMBRE_PROD,MES,ANIO 
+  END
+GO
 
 
 --FUNCIONES
