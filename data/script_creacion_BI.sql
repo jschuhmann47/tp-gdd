@@ -85,23 +85,27 @@ CREATE TABLE [gd_esquema].[BI_HECHOS_COMPRAS](
     [CODIGO_PROVINCIA] decimal(19,0), --fk
     [ID_PROVEEDOR] decimal(19,0), --fk
     [COD_PROD] nvarchar(50), --fk
-    [TOTAL_COMPRA] decimal(18,2),
+    [TOTAL_PRODUCTO] decimal(18,2),
+    [TOTAL_COMPRA] decimal(18,2)
 );
 
 CREATE TABLE [gd_esquema].[BI_HECHOS_VENTAS](
     [ID_FECHA] decimal(19,0), --fk
     [CODIGO_PROVINCIA] decimal(19,0), --fk
     [ID_CLIENTE] decimal(19,0), --fk
+    --rango etario guardarlo aca o hacer dimension cliente
     [ID_CANAL_VENTA] decimal(19,0), --fk
     [ID_MEDIO_PAGO] decimal(19,0), --fk
     [ID_CATEGORIA] decimal(19,0), --fk
     [COD_PROD] nvarchar(50), --fk
     [ID_DESC] decimal(19,0), --fk
     [ID_MEDIO_ENVIO] decimal(19,0), --fk
-    [TOTAL_COMPRAVENTA] decimal(18,2),
+    [TOTAL_VENTA] decimal(18,2), --NETO
     [TOTAL_DESCUENTOS] decimal(18,2),
     [MEDIO_ENVIO_COSTO] decimal(18,2),
-    [CANAL_VENTA_COSTO] decimal(18,2)
+    [CANAL_VENTA_COSTO] decimal(18,2),
+    [CANTIDAD_PRODUCTO] decimal(19,0),
+    [TOTAL_PRODUCTO] decimal(18,2)
 );
 
 CREATE TABLE [gd_esquema].[BI_HECHOS_DESCUENTOS]( --los desc de compras no importa discriminarlos, van directo en el total
@@ -232,10 +236,17 @@ compras, menos los costos de transacción totales aplicados asociados los
 medios de pagos utilizados en las mismas.
 */
 
-CREATE VIEW ganancias_mensuales_x_canal_venta (CANAL_VENTA, MES, ANIO, GANANCIAS)
+CREATE VIEW ganancias_mensuales_x_canal_venta (CANAL_VENTA, MES, ANIO, TOTAL_VENTAS,TOTAL_COMPRAS, TOTAL_NETO)
 AS
   BEGIN
-    
+    SELECT cv.CANAL_VENTA,t.MES,t.ANIO,SUM(v.TOTAL_VENTA) TOTAL_VENTA, 
+    SUM(c.TOTAL_COMPRA) TOTAL_COMPRA, 
+    SUM(v.TOTAL_VENTA)-SUM(c.TOTAL_COMPRA)-v.MEDIO_ENVIO_COSTO-v.CANAL_VENTA_COSTO TOTAL_NETO
+    FROM [gd_esquema].BI_HECHOS_VENTAS v
+    JOIN [gd_esquema].BI_DIM_TIEMPO t ON t.ID_FECHA = v.ID_FECHA
+    JOIN [gd_esquema].BI_HECHOS_COMPRAS c ON c.ID_FECHA = t.ID_FECHA
+    JOIN [gd_esquema].BI_DIM_CANAL_VENTA cv ON v.ID_CANAL_VENTA = cv.ID_CANAL_VENTA
+    GROUP BY CANAL_VENTA,MES,ANIO
   END
 GO
 -- Los 5 productos con mayor rentabilidad anual, con sus respectivos %
@@ -245,10 +256,28 @@ GO
 -- Valor expresado en porcentaje.
 -- Para simplificar, no es necesario tener en cuenta los descuentos aplicados.
 
+CREATE VIEW top_5_productos_x_rentabilidad (...)
+AS
+  BEGIN
+  SELECT TOP 5 NOMBRE_PROD,obtener_rentabilidad_producto(COD_PROD) RENTABILIDAD
+  ORDER BY obtener_rentabilidad_producto(COD_PROD)
+  END
+GO
+
 
 -- Las 5 categorías de productos más vendidos por rango etario de clientes
 -- por mes.
-
+CREATE VIEW top_5_categorias_x_rango_etario_x_mes (...)
+AS
+  BEGIN
+    SELECT 
+    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=obtener_id_rango_etario(fecha_nac)),CATEGORIA,COUNT(CANTIDAD_PRODUCTO),
+    ROW_NUMBER() OVER (PARTITION BY CATEGORIA Order by COUNT(CANTIDAD_PRODUCTO) DESC) AS Ranking
+    FROM [gd_esquema].BI_HECHOS_VENTAS
+    WHERE Ranking <=5
+    GROUP BY RANGO_ETARIO,CATEGORIA
+  END
+GO
 
 
 -- Total de Ingresos por cada medio de pago por mes, descontando los costos
@@ -290,7 +319,7 @@ CREATE FUNCTION [gd_esquema].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMA
 				WHEN @edad BETWEEN 0 AND 24 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '<25')
 				WHEN @edad BETWEEN 25 AND 34 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[25-35)')
         WHEN @edad BETWEEN 35 AND 55 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[35-55]')
-				ELSE (SELECT edad_id FROM [gd_esquema].bi_edad WHERE rango_edad = '>55')
+				ELSE (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '>55')
 			END
 
 		RETURN @edad_id
@@ -301,12 +330,23 @@ CREATE FUNCTION [gd_esquema].obtener_id_tiempo(@fecha DATE) RETURNS DECIMAL(19,0
 	BEGIN
     DECLARE @anioFecha INT, @mesFecha INT, @idTiempo INT
 
-    SET @anio_de_fecha = DATEPART(YEAR, @fecha)
-    SET @cuatrimestre_de_fecha = DATEPART(QUARTER, @fecha)
+    SET @anioFecha = DATEPART(YEAR, @fecha)
+    SET @mesFecha = DATEPART(MONTH, @fecha)
 
-    SELECT @id_tiempo = tiempo_id
-    FROM [gd_esquema].bi_Tiempo
-    WHERE anio = @anio_de_fecha AND cuatrimestre = @cuatrimestre_de_fecha
+    SELECT @idTiempo = tiempo_id
+    FROM [gd_esquema].BI_DIM_TIEMPO
+    WHERE ANIO = @anioFecha AND MES = @mesFecha
 
-    RETURN @id_tiempo
+    RETURN @idTiempo
 END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_rentabilidad_producto(@idProd decimal(19,0)) AS
+  BEGIN
+    SELECT (SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_COMPRA))/SUM(v.TOTAL_PRODUCTO)
+    FROM [gd_esquema].BI_HECHOS_VENTAS v 
+    JOIN [gd_esquema].BI_HECHOS_COMPRAS c ON v.COD_PROD=c.COD_PROD
+    JOIN [gd_esquema].BI_DIM_TIEMPO t ON v.ID_FECHA=t.ID_FECHA
+    WHERE t.ANIO = YEAR(GETDATE())
+  END
+GO
