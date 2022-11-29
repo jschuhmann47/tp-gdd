@@ -304,7 +304,7 @@ ALTER TABLE [gd_esquema].PRODUCTO ADD CONSTRAINT [FK_PRODUCTO.ID_MATERIAL] FOREI
 GO
 
 
-CREATE PROCEDURE insertar_proveedor
+CREATE PROCEDURE [gd_esquema].insertar_proveedor
 AS
 BEGIN
 	DECLARE @cuit nvarchar(255),@domicilio nvarchar(255),@codPostal decimal(19,0),@razonSocial nvarchar(255),@mail nvarchar(255),@provincia nvarchar(255),@localidad nvarchar(255)
@@ -343,7 +343,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_marca_categoria_y_material
+CREATE PROCEDURE [gd_esquema].insertar_marca_categoria_y_material
 AS
 BEGIN
   INSERT INTO gd_esquema.MARCA (MARCA)
@@ -358,7 +358,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_productos
+CREATE PROCEDURE [gd_esquema].insertar_productos
 AS
 BEGIN
   DECLARE @prodCodigo nvarchar(50),@prodNombre nvarchar(50), @prodDesc nvarchar(50), @marca nvarchar(255),@categoria nvarchar(255), @material nvarchar(50)
@@ -379,7 +379,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_canales_venta
+CREATE PROCEDURE [gd_esquema].insertar_canales_venta
 AS
 BEGIN
 	INSERT INTO gd_esquema.CANAL_VENTA (CANAL_VENTA,CANAL_COSTO)
@@ -391,7 +391,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_variantes
+CREATE PROCEDURE [gd_esquema].insertar_variantes
 AS
 BEGIN
 	DECLARE @variante nvarchar(50),@tipo nvarchar(50),@codigo nvarchar(50)
@@ -417,7 +417,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_clientes
+CREATE PROCEDURE [gd_esquema].insertar_clientes
 AS
 BEGIN
 	DECLARE @nombre nvarchar(255),@apellido nvarchar(255),@dni decimal(18,0),@direccion nvarchar(255),@telefono decimal(18,0),@mail nvarchar(255),@fechaNacimiento date,@localidad nvarchar(255),@codPostal decimal(19,0),@provincia nvarchar(255)
@@ -458,7 +458,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_descuentos_compra
+CREATE PROCEDURE [gd_esquema].insertar_descuentos_compra
 AS
 BEGIN
 	INSERT INTO gd_esquema.DESCUENTO_COMPRA (CODIGO_DESC_COMPRA,MONTO_DESC_COMPRA)
@@ -468,7 +468,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_medio_envio_x_codigo_postal
+CREATE PROCEDURE [gd_esquema].insertar_medio_envio_x_codigo_postal
 AS
 BEGIN
 	INSERT INTO gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL (CODIGO_POSTAL,TIEMPO_EST,PRECIO,MEDIO)
@@ -479,7 +479,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_descuentos_cupon
+CREATE PROCEDURE [gd_esquema].insertar_descuentos_cupon
 AS
 BEGIN
 	INSERT INTO gd_esquema.DESCUENTO_CUPON (CODIGO_CUPON,VALOR_DESC,FECHA_DESDE,FECHA_HASTA)
@@ -489,7 +489,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_descuentos_fijo
+CREATE PROCEDURE [gd_esquema].insertar_descuentos_fijo
 AS
 BEGIN
   INSERT INTO gd_esquema.DESCUENTO_FIJO (TIPO_DESC,VALOR_DESC)
@@ -500,7 +500,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_compras
+CREATE PROCEDURE [gd_esquema].insertar_compras
 AS
 BEGIN
 	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@totalCompra decimal(18,2),@cuit nvarchar(50)--,@codDescuentoCompra decimal(19,0),@prodVarianteCod nvarchar(50)
@@ -530,7 +530,7 @@ END
 
 go
 
-CREATE PROCEDURE insertar_medios_de_pago
+CREATE PROCEDURE [gd_esquema].insertar_medios_de_pago
 AS
 BEGIN
 	INSERT INTO gd_esquema.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
@@ -547,7 +547,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_descuentos_x_medio_de_pago
+CREATE PROCEDURE [gd_esquema].insertar_descuentos_x_medio_de_pago
 AS
 BEGIN
   DECLARE @medioPago nvarchar(255),@porcDescuento decimal(18,2),@importe decimal(18,2),@concepto nvarchar(255)
@@ -590,7 +590,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_producto_variante
+CREATE PROCEDURE [gd_esquema].insertar_producto_variante
 AS
 BEGIN
   DECLARE @prodVarianteCod nvarchar(50),@prodCod nvarchar(50),@stock decimal(19,0),@descripcion nvarchar(50),@variante nvarchar(50),@tipoVariante nvarchar(50)
@@ -621,7 +621,7 @@ GO
 
 
 
-CREATE PROCEDURE insertar_compra_producto
+CREATE PROCEDURE [gd_esquema].insertar_compra_producto
 AS
 BEGIN
 	
@@ -661,7 +661,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_venta_producto
+CREATE PROCEDURE [gd_esquema].insertar_venta_producto
 AS
 BEGIN
 	DECLARE @ventaCod decimal(19,0),@prodVarCod nvarchar(50),@cant decimal(18,0),@precio decimal(18,2),@totalProd decimal(18,2)
@@ -696,7 +696,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_ventas
+CREATE PROCEDURE [gd_esquema].insertar_ventas
 AS
 BEGIN
   DECLARE @codVenta decimal(19,0), @fecha date, @clienteDni decimal(19,0), @canalVenta nvarchar(255), @medioEnvio nvarchar(255)
@@ -758,7 +758,7 @@ END
 
 GO
 
-CREATE PROCEDURE insertar_todo
+CREATE PROCEDURE [gd_esquema].insertar_todo
 AS
 BEGIN
 	

@@ -12,7 +12,7 @@ CREATE TABLE [gd_esquema].[BI_DIM_TIEMPO](
 GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_PROVINCIA](
-    [CODIGO_PROVINCIA] decimal(19,0) IDENTITY(1,1),
+    [CODIGO_PROVINCIA] decimal(19,0),
     [NOMBRE_PROV] nvarchar(255),
     PRIMARY KEY ([CODIGO_PROVINCIA])
 );
@@ -70,7 +70,7 @@ CREATE TABLE [gd_esquema].[BI_DIM_TIPO_DESCUENTO](
 GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_TIPO_ENVIO](
-  [ID_MEDIO_ENVIO] decimal(19,0) IDENTITY(1,1),
+  [ID_MEDIO_ENVIO] decimal(19,0),
   [MEDIO] nvarchar(255),
   PRIMARY KEY ([ID_MEDIO_ENVIO])
 );
@@ -122,15 +122,105 @@ ALTER TABLE [gd_esquema].[BI_HECHOS_COMPRAVENTA] ADD CONSTRAINT [ID_FECHA] FOREI
 --MIGRACION
 
 
+CREATE PROCEDURE [gd_esquema].cargar_tiempo AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_TIEMPO (MES, ANIO)
+            SELECT DISTINCT YEAR(FECHA_COMPRA), MONTH(FECHA_COMPRA)
+                FROM [gd_esquema].COMPRA
+            UNION
+             SELECT DISTINCT YEAR(FECHA_VENTA), MONTH(FECHA_VENTA)
+                FROM [gd_esquema].VENTA
+            UNION
+    END
+GO
+
+CREATE PROCEDURE [gd_esquema].cargar_rangos_etarios AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_RANGO_ETARIO (RANGO_ETARIO) VALUES ('<25'), ('[25-35)'), ('[35-55]'), ('>55')
+    END
+GO
+
+CREATE PROCEDURE [gd_esquema].cargar_provincias AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_PROVINCIA (CODIGO_PROVINCIA,NOMBRE_PROV) 
+        SELECT CODIGO_PROVINCIA,NOMBRE_PROV FROM [gd_esquema].[PROVINCIA]
+    END
+GO
+
+CREATE PROCEDURE [gd_esquema].cargar_canales_venta AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_CANAL_VENTA (ID_CANAL_VENTA,CANAL_VENTA) 
+        SELECT ID_CANAL_VENTA,CANAL_VENTA FROM [gd_esquema].[CANAL_VENTA]
+    END
+GO
 
 
+CREATE PROCEDURE [gd_esquema].cargar_medios_pago AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_MEDIO_PAGO (ID_MEDIO_PAGO,MEDIO_PAGO) 
+        SELECT ID_MEDIO_PAGO,MEDIO_PAGO FROM [gd_esquema].[MEDIO_PAGO]
+    END
+GO
 
 
+CREATE PROCEDURE [gd_esquema].cargar_medios_pago AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_MEDIO_PAGO (ID_CATEGORIA,MEDIO_PAGO) 
+        SELECT ID_MEDIO_PAGO,MEDIO_PAGO FROM [gd_esquema].[MEDIO_PAGO]
+    END
+GO
 
 
+CREATE PROCEDURE [gd_esquema].cargar_categorias_prod AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_CATEGORIA_PRODUCTO (ID_CATEGORIA,CATEGORIA) 
+        SELECT ID_CATEGORIA,CATEGORIA FROM [gd_esquema].[CATEGORIA]
+    END
+GO
 
 
+CREATE PROCEDURE [gd_esquema].cargar_productos AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_PRODUCTO (COD_PROD,NOMBRE_PROD,DESCRIPCION_PROD) 
+        SELECT COD_PROD,NOMBRE_PROD,DESCRIPCION_PROD FROM [gd_esquema].[PRODUCTO]
+    END
+GO
 
+
+CREATE PROCEDURE [gd_esquema].cargar_tipos_descuento AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_TIPO_DESCUENTO (TIPO_DESCUENTO) 
+        VALUES ('COMPRA'),('FIJO'),('CUPON'),('MEDIO_PAGO') --ver si faltan
+    END
+GO
+
+CREATE PROCEDURE [gd_esquema].cargar_tipos_envio AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_TIPO_ENVIO (ID_MEDIO_ENVIO,MEDIO) 
+        SELECT DISTINCT ID_MEDIO_ENVIO,MEDIO FROM [gd_esquema].[MEDIO_ENVIO_X_CODIGO_POSTAL]
+    END
+GO
+
+
+CREATE PROCEDURE [gd_esquema].cargar_proveedores AS
+    BEGIN
+        INSERT INTO [gd_esquema].BI_DIM_PROVEEDOR (ID_PROVEEDOR,RAZON_SOCIAL_PROV) 
+        SELECT DISTINCT CUIT_PROV,RAZON_SOCIAL_PROV FROM [gd_esquema].[MEDIO_ENVIO_X_CODIGO_POSTAL]
+    END
+GO
+
+
+CREATE PROCEDURE [gd_esquema].cargar_compras AS
+    BEGIN
+      //TODO
+    END
+GO
+
+CREATE PROCEDURE [gd_esquema].cargar_ventas AS
+    BEGIN
+      //TODO
+    END
+GO
 
 
 --VISTAS
@@ -144,10 +234,10 @@ medios de pagos utilizados en las mismas.
 
 CREATE VIEW ganancias_mensuales_x_canal_venta (CANAL_VENTA, MES, ANIO, GANANCIAS)
 AS
-BEGIN
-
-END
-
+  BEGIN
+    
+  END
+GO
 -- Los 5 productos con mayor rentabilidad anual, con sus respectivos %
 -- Se entiende por rentabilidad a los ingresos generados por el producto
 -- (ventas) durante el periodo menos la inversión realizada en el producto
@@ -198,9 +288,9 @@ CREATE FUNCTION [gd_esquema].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMA
 		SELECT @edad_id =
 			CASE 
 				WHEN @edad BETWEEN 0 AND 24 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '<25')
-				WHEN @edad BETWEEN 25 AND 34 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '25-35')
-        WHEN @edad BETWEEN 35 AND 55 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '35-55')
-				ELSE (SELECT edad_id FROM [N&M'S].bi_edad WHERE rango_edad = '>55')
+				WHEN @edad BETWEEN 25 AND 34 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[25-35)')
+        WHEN @edad BETWEEN 35 AND 55 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[35-55]')
+				ELSE (SELECT edad_id FROM [gd_esquema].bi_edad WHERE rango_edad = '>55')
 			END
 
 		RETURN @edad_id
