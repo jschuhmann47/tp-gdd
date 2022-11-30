@@ -496,6 +496,8 @@ BEGIN
   SELECT DISTINCT VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE
   FROM gd_esquema.Maestra
   WHERE VENTA_DESCUENTO_CONCEPTO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO = 'Otros'
+  UNION
+  SELECT 'Otros',0
 END
 
 GO
@@ -542,6 +544,8 @@ BEGIN
 	SELECT DISTINCT VENTA_MEDIO_PAGO,0,VENTA_MEDIO_PAGO_COSTO
 	FROM gd_esquema.Maestra
 	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
+	UNION
+	SELECT 'Tarjeta',0,100.0
 
 END
 
@@ -705,58 +709,97 @@ BEGIN
   ,@medioPago nvarchar(255), @totalVenta decimal(18,2), @precioEnvio decimal(18,2),@cuponCod nvarchar(255),
   @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2),@codPostal decimal (19,0), 
   @envioPrecio decimal(18,2),@nombre nvarchar(255),@apellido nvarchar(255),@canalCosto decimal(18,2)
-  DECLARE cursorvs CURSOR FOR
+  DECLARE cursorvs SCROLL CURSOR FOR
   SELECT DISTINCT VENTA_CODIGO, VENTA_FECHA, CLIENTE_DNI, VENTA_CANAL, VENTA_MEDIO_ENVIO, VENTA_MEDIO_PAGO, VENTA_TOTAL, 
   VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE,CLIENTE_CODIGO_POSTAL, VENTA_ENVIO_PRECIO,CLIENTE_NOMBRE,CLIENTE_APELLIDO,VENTA_CANAL_COSTO
   FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL
   OPEN cursorvs
-  FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+  FETCH NEXT FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
   @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
-	--hacer ciclo por cada renglon de la misma venta, ver si tiene descuento y/o cupon. lo mismo en compra
+	--hacer ciclo por cada renglon de la misma venta, ver si tiene descuento y/o cupon.
 	
 	
-	DECLARE @codigoVentaAux decimal(19,0),@idMedioPago decimal(19,0)
-	SET @codigoVentaAux=@codVenta
-	WHILE(@codigoVentaAux=@codVenta)
-	BEGIN
-		IF @descuentoConcepto IS NULL AND @descuentoValor IS NULL
-		SET @descuentoConcepto=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
-		ELSE
+	--DECLARE @codigoVentaAux decimal(19,0),@idMedioPago decimal(19,0)
+	--SET @codigoVentaAux=@codVenta
+	--WHILE(@codigoVentaAux=@codVenta)
+	--BEGIN
+	--	IF @descuentoConcepto IS NULL AND @descuentoValor IS NULL
+	--	SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
+	--	ELSE
+	--	BEGIN
+	--		IF @descuentoConcepto='Otros' 
+	--		BEGIN
+			
+	--		SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
+	--		END
+	--		IF @descuentoConcepto='Efectivo' OR @descuentoConcepto='Transferencia' SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor)
+	--		IF @descuentoConcepto='Tarjeta' SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
+	--	END
+	--	FETCH NEXT FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+ -- 		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
+	--END
+	--FETCH PRIOR FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+ -- 		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.VENTA WHERE COD_VENTA=@codVenta)
 		BEGIN
-			CASE (@descuentoConcepto)
-			WHEN 'Otros' THEN INSERT INTO gd_esquema.VENTA_MEDIANTE_DESCUENTO_FIJO (COD_VENTA, CODIGO_DESCUENTO, IMPORTE) VALUES (@codVenta, (SELECT CODIGO_DESCUENTO FROM gd_esquema.DESCUENTO_FIJO WHERE @descuentoValor=VALOR_DESC), @descuentoValor)
-			WHEN 'Efectivo' THEN SET @descuentoConcepto=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor)
-			WHEN 'Transferencia' THEN SET @descuentoConcepto=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor)
-			WHEN 'Tarjeta' THEN SET @descuentoConcepto=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
-		END
-		FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
-  		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
-	END
-
 		INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO, CANAL_COSTO, COSTO_TRANSACCION)
 				VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM gd_esquema.CLIENTE WHERE DNI_CLIENTE=@clienteDni AND NOMBRE_CLIENTE=@nombre AND APELLIDO_CLIENTE=@apellido), 
 					(SELECT ID_CANAL_VENTA FROM gd_esquema.CANAL_VENTA WHERE CANAL_VENTA=@canalVenta),
 					(SELECT ID_MEDIO_ENVIO FROM gd_esquema.MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio AND CODIGO_POSTAL=@codPostal AND PRECIO=@envioPrecio), 
-					@idMedioPago,
+					[gd_esquema].obtener_id_medio_pago(@codVenta),
 					@totalVenta, 
 					@precioEnvio,
 					@canalCosto,
-					(SELECT COSTO_TRANSACCION FROM gd_esquema.MEDIO_DE_PAGO WHERE ID_MEDIO_PAGO=@idMedioPago))
+					(SELECT COSTO_TRANSACCION FROM gd_esquema.MEDIO_DE_PAGO WHERE ID_MEDIO_PAGO=[gd_esquema].obtener_id_medio_pago(@codVenta)))
 
+		END
 		IF @cuponCod IS NOT NULL
 		BEGIN
 			INSERT INTO gd_esquema.VENTA_MEDIANTE_CUPON (COD_VENTA, CODIGO_CUPON, IMPORTE)
 			VALUES (@codVenta, @cuponCod, @cuponImporte)
 		END
-		FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+		FETCH NEXT FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
 		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
   	END
   CLOSE cursorvs
   DEALLOCATE cursorvs
 END
 
+GO
+
+CREATE PROCEDURE [gd_esquema].insertar_descuentos_fijos_de_ventas
+AS
+BEGIN
+	DECLARE @codVenta decimal(19,0),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2)
+	DECLARE cursorvss CURSOR FOR
+	SELECT DISTINCT VENTA_CODIGO, VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE
+	FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO='Otros'
+	OPEN cursorvss
+	FETCH cursorvss INTO @codVenta,@descuentoConcepto,@descuentoValor
+	WHILE(@@FETCH_STATUS = 0)
+	BEGIN
+		INSERT INTO gd_esquema.VENTA_MEDIANTE_DESCUENTO_FIJO (COD_VENTA, CODIGO_DESCUENTO, IMPORTE) 
+		VALUES (@codVenta, (SELECT df.CODIGO_DESCUENTO FROM gd_esquema.DESCUENTO_FIJO df WHERE @descuentoValor=df.VALOR_DESC), @descuentoValor)
+		FETCH cursorvss INTO @codVenta,@descuentoConcepto,@descuentoValor
+	END
+	CLOSE cursorvss
+	DEALLOCATE cursorvss
+END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_id_medio_pago(@codVenta decimal(19,0)) RETURNS DECIMAL(19,0) AS
+  BEGIN
+	DECLARE @medio nvarchar(255),@importe decimal(18,2)
+    SELECT distinct @medio=VENTA_MEDIO_PAGO,@importe=VENTA_DESCUENTO_IMPORTE 
+	FROM [gd_esquema].Maestra 
+	WHERE VENTA_CODIGO=@codVenta AND VENTA_DESCUENTO_CONCEPTO!='Otros' AND (VENTA_DESCUENTO_IMPORTE IS NOT NULL AND VENTA_MEDIO_PAGO IS NOT NULL) OR (VENTA_DESCUENTO_IMPORTE IS NULL AND VENTA_MEDIO_PAGO='Tarjeta')
+	IF @importe IS NULL
+	RETURN (SELECT ID_MEDIO_PAGO FROM [gd_esquema].MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medio AND VALOR_DESC=0)
+	ELSE
+	RETURN (SELECT ID_MEDIO_PAGO FROM [gd_esquema].MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medio AND VALOR_DESC=@importe)
+  END
 GO
 
 CREATE PROCEDURE [gd_esquema].insertar_todo
@@ -785,6 +828,7 @@ BEGIN
 		
 		exec [gd_esquema].insertar_ventas 
 		exec [gd_esquema].insertar_venta_producto
+		EXEC [gd_esquema].insertar_descuentos_fijos_de_ventas
 		
 		COMMIT TRANSACTION
 	END TRY
