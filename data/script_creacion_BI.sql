@@ -1,7 +1,5 @@
-
-
---USE [GD2C2022]
---GO
+USE [GD2C2022]
+GO
 
 
 CREATE TABLE [gd_esquema].[BI_DIM_TIEMPO](
@@ -64,7 +62,7 @@ GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_TIPO_DESCUENTO](
   [ID_TIPO_DESCUENTO] decimal(19,0) IDENTITY(1,1),
-  [TIPO_DESCUENTO] char(20), -- COMPRA, VENTA, MEDIO_PAGO, CUPON,etc
+  [TIPO_DESCUENTO] char(20),
   PRIMARY KEY ([ID_TIPO_DESCUENTO])
 );
 
@@ -224,7 +222,7 @@ GO
 CREATE PROCEDURE [gd_esquema].cargar_tipos_descuento AS
     BEGIN
         INSERT INTO [gd_esquema].BI_DIM_TIPO_DESCUENTO (TIPO_DESCUENTO) 
-        VALUES ('FIJO'),('CUPON'),('MEDIO_PAGO') --ver si faltan TODO
+        VALUES ('FIJO'),('CUPON'),('MEDIO_PAGO')
     END
 GO
 
@@ -328,7 +326,7 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
           VALUES(obtener_id_tiempo(@fecha),@codProvincia,obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
           @idCanalVenta,@idMedioPago,(SELECT ID_CATEGORIA FROM CATEGORIA WHERE CATEGORIA=@categoria),@codProdVar,@idMedioEnvio,NULL,@totalVenta,
           @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@totalProd)
-          FETCH NEXT FROM cvenp INTO VARIABLES2
+          FETCH NEXT FROM cvenp INTO @cantidad,@precioUnit,@precioTotalProd,@codProdVar
         END
         CLOSE cvenp
         DEALLOCATE cvenp
@@ -339,26 +337,6 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
       DEALLOCATE cven
     END
 GO
-
-/*
-    [ID_FECHA] decimal(19,0), --fk
-    [CODIGO_PROVINCIA] decimal(19,0), --fk
-    [ID_RANGO_ETARIO] decimal(19,0), --fk
-    [ID_CANAL_VENTA] decimal(19,0), --fk
-    [ID_MEDIO_PAGO] decimal(19,0), --fk
-    [ID_CATEGORIA] decimal(19,0), --fk
-    [COD_PROD] nvarchar(50), --fk
-    [ID_DESC] decimal(19,0), --fk
-    [ID_MEDIO_ENVIO] decimal(19,0), --fk
-    [DESCUENTO_ID] decimal(19,0), --fk
-    [TOTAL_VENTA] decimal(18,2), --NETO
-    [TOTAL_DESCUENTOS] decimal(18,2),
-    [MEDIO_ENVIO_COSTO] decimal(18,2),
-    [MEDIO_PAGO_COSTO] decimal(18,2),
-    [CANAL_VENTA_COSTO] decimal(18,2),
-    [CANTIDAD_PRODUCTO] decimal(19,0),
-    [TOTAL_PRODUCTO] decimal(18,2)
-*/
 
 
 
@@ -402,12 +380,12 @@ GO
 
 -- Las 5 categorías de productos más vendidos por rango etario de clientes
 -- por mes.
---VER NOMBRE WHERE  join tiempo
+
 CREATE VIEW top_5_categorias_x_rango_etario_x_mes (RANGO_ETARIO,CANTIDAD_PRODUCTO,RANKING)
 AS
   BEGIN
     SELECT 
-    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=obtener_id_rango_etario(fecha_nac)), --de donde sale la fecha
+    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=obtener_id_rango_etario(fecha_nac)), --
     CATEGORIA,
     MES,
     ANIO,
@@ -424,15 +402,14 @@ GO
 -- Total de Ingresos por cada medio de pago por mes, descontando los costos
 -- por medio de pago (en caso que aplique) y descuentos por medio de pago
 -- (en caso que aplique)
---VER NOMBRE WHERE
---VER FUNCION SUM
+
 CREATE VIEW total_ingresos_medio_pago_x_mes (...)
 AS
   BEGIN
     SELECT (SELECT MEDIO FROM [gd_esquema].BI_DIM_MEDIO_PAGO m WHERE ID_MEDIO_PAGO=m.ID_MEDIO_PAGO),
     MES,
     ANIO,
-    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO (asi no deberia sumarse, sumar uno por cada venta)) - SUM(DESCUENTOS TODO)
+    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO (asi no deberia sumarse, sumar uno por cada venta)) - SUM(DESCUENTOS) --
     FROM [gd_esquema].BI_HECHOS_VENTAS v
     JOIN [gd_esquema].BI_DIM_TIEMPO t ON t.ID_FECHA = v.ID_FECHA
     GROUP BY MEDIO_PAGO,MES,ANIO
@@ -614,8 +591,11 @@ GO
 CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_mes_y_anio(MES, ANIO) RETURNS DECIMAL(19,0) AS
   BEGIN
     DECLARE @cant DECIMAL(19,0)
-    SELECT @cant=COUNT(*) FROM (SELECT DISTINCT ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO FROM [gd_esquema].BI_HECHOS_VENTAS venta WHERE fecha.MES = MES AND fecha.ANIO  = ANIO
-                                                                                                                                      JOIN [gd_esquema].[BI_DIM_TIEMPO] fecha ON ( venta.ID_FECHA = fecha.ID_FECHA ) ) Tabla
+    SELECT @cant=COUNT(*) FROM 
+    (
+    SELECT DISTINCT ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO FROM [gd_esquema].BI_HECHOS_VENTAS venta WHERE fecha.MES = MES AND fecha.ANIO  = ANIO
+    JOIN [gd_esquema].[BI_DIM_TIEMPO] fecha ON ( venta.ID_FECHA = fecha.ID_FECHA ) 
+    ) Tabla
     RETURN @cant
   END
 GO

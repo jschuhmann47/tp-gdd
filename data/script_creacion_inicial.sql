@@ -1,5 +1,5 @@
---USE [GD2C2022]
---GO
+USE [GD2C2022]
+GO
 
 --create schema gd_esquema
 
@@ -9,7 +9,6 @@ CREATE TABLE  [gd_esquema].[MEDIO_DE_PAGO] (
   [MEDIO_PAGO] nvarchar(255),
   [VALOR_DESC] decimal(18,2),
   [COSTO_TRANSACCION] decimal(18,2),
---  [CODIGO_DESC_MP] decimal(19,0),
    PRIMARY KEY  ([ID_MEDIO_PAGO])
 );
 
@@ -20,7 +19,6 @@ CREATE TABLE [gd_esquema].[COMPRA] (
   [ID_MEDIO_PAGO] decimal(19,0),
   [TOTAL_COMPRA] decimal(18,2),
   [CUIT_PROV] nvarchar(50),
---  [CODIGO_DESC_COMPRA] decimal(19,0),
   PRIMARY KEY ([COD_COMPRA])
 );
 
@@ -29,11 +27,6 @@ CREATE TABLE [gd_esquema].[PROVINCIA] (
   [NOMBRE_PROV] nvarchar(255),
   PRIMARY KEY ([CODIGO_PROVINCIA])
 );
-
---delete from [gd_esquema].[PROVINCIA]
---delete from [gd_esquema].[CLIENTE]
---delete from [gd_esquema].[CODIGO_POSTAL]
-
 
 
 CREATE TABLE [gd_esquema].[VENTA_MEDIANTE_CUPON] (
@@ -56,7 +49,7 @@ CREATE TABLE [gd_esquema].[PROVEEDOR] (
   PRIMARY KEY ([CUIT_PROV])
 );
 
---delete from [gd_esquema].[PROVEEDOR]
+
 
 CREATE TABLE [gd_esquema].[CLIENTE] (
   [ID_CLIENTE] decimal(19,0) IDENTITY (1,1),
@@ -73,8 +66,6 @@ CREATE TABLE [gd_esquema].[CLIENTE] (
   PRIMARY KEY ([ID_CLIENTE]) 
 );
 
---delete from [gd_esquema].[CLIENTE]
---delete from [gd_esquema].[CODIGO_POSTAL]
 
 
 CREATE TABLE [gd_esquema].[DESCUENTO_COMPRA] (
@@ -82,8 +73,6 @@ CREATE TABLE [gd_esquema].[DESCUENTO_COMPRA] (
   [MONTO_DESC_COMPRA] decimal(19,0),
   PRIMARY KEY ([CODIGO_DESC_COMPRA])
 );
------------------------------------------------------------------------------------------------------------
---DROP TABLE [gd_esquema].[DESCUENTO_COMPRA]
 
 CREATE TABLE [gd_esquema].[DESCUENTO_MEDIO_PAGO] (
   [CODIGO_DESC_MP] DECIMAL(19,0) IDENTITY (1,1),
@@ -126,14 +115,14 @@ CREATE TABLE [gd_esquema].[VARIANTE] (
   [VALOR] nvarchar(50),
   PRIMARY KEY ([CODIGO_VAR])
 );
---delete from [gd_esquema].[VARIANTE]
+
 CREATE TABLE [gd_esquema].[TIPO_VARIANTE] (
   [CODIGO_TIPO_VAR] nvarchar(50),
   [DESCRIPCION_TIPO_VAR] nvarchar(50),
   PRIMARY KEY ([CODIGO_TIPO_VAR])
 );
 
---delete from [gd_esquema].[TIPO_VARIANTE]
+
 
 CREATE TABLE [gd_esquema].[VENTA_MEDIANTE_DESCUENTO_FIJO] (
   [COD_VENTA] decimal(19,0),
@@ -151,7 +140,7 @@ CREATE TABLE [gd_esquema].[CANAL_VENTA] (
 
 CREATE TABLE [gd_esquema].[DESCUENTO_CUPON] (
   [CODIGO_CUPON] nvarchar(255),
-  --[COD_VENTA] decimal(19,0),
+
   [VALOR_DESC] decimal(19,0),
   [FECHA_DESDE] date,
   [FECHA_HASTA] date,
@@ -171,7 +160,7 @@ CREATE TABLE [gd_esquema].[VENTA_PRODUCTO] (
 
 CREATE TABLE [gd_esquema].[DESCUENTO_FIJO] (
   [CODIGO_DESCUENTO] decimal(19,0) IDENTITY (1,1),
-  --[COD_VENTA] decimal(18,2),
+
   [TIPO_DESC] nvarchar(255),
   [VALOR_DESC] decimal(18,2),
   PRIMARY KEY ([CODIGO_DESCUENTO])
@@ -204,7 +193,7 @@ CREATE TABLE [gd_esquema].[CODIGO_POSTAL] (
   PRIMARY KEY ([CODIGO_POSTAL])
 );
 
---delete from [gd_esquema].[CODIGO_POSTAL]
+
 
 
 CREATE TABLE [gd_esquema].[DESCUENTO_X_COMPRA] (
@@ -213,7 +202,7 @@ CREATE TABLE [gd_esquema].[DESCUENTO_X_COMPRA] (
   PRIMARY KEY ([COD_COMPRA], [CODIGO_DESC_COMPRA])
 );
 
-------------------------------------------------------------------------------------------------------------
+
 
 CREATE TABLE [gd_esquema].[DESCUENTO_X_MEDIO_DE_PAGO] (
   [CODIGO_DESC_MP] decimal(19,0),
@@ -228,7 +217,7 @@ CREATE TABLE [gd_esquema].[MEDIO_ENVIO_X_CODIGO_POSTAL] (
   [TIEMPO_EST] decimal(18,2),
   [PRECIO] decimal(18,2),
   [MEDIO] nvarchar(255),
-  --PRIMARY KEY ([ID_MEDIO_ENVIO],[CODIGO_POSTAL])
+
   PRIMARY KEY ([ID_MEDIO_ENVIO])
 );
 
@@ -266,7 +255,7 @@ ALTER TABLE [gd_esquema].VARIANTE ADD CONSTRAINT [FK_MEDIO_DE_PAGO.CODIGO_TIPO_V
 ALTER TABLE [gd_esquema].VENTA_MEDIANTE_DESCUENTO_FIJO ADD CONSTRAINT [FK_VENTA_MEDIANTE_DESCUENTO_FIJO.COD_VENTA] FOREIGN KEY ([COD_VENTA]) REFERENCES [gd_esquema].[VENTA]([COD_VENTA])
 ALTER TABLE [gd_esquema].VENTA_MEDIANTE_DESCUENTO_FIJO ADD CONSTRAINT [FK_VENTA_MEDIANTE_DESCUENTO_FIJO.CODIGO_DESCUENTO] FOREIGN KEY ([CODIGO_DESCUENTO]) REFERENCES [gd_esquema].[DESCUENTO_FIJO]([CODIGO_DESCUENTO])
 
---ALTER TABLE [gd_esquema].DESCUENTO_CUPON ADD CONSTRAINT [COD_VENTA] FOREIGN KEY ([COD_VENTA]) REFERENCES [VENTA_MEDIANTE_CUPON]([COD_VENTA])
+
 
 
 
@@ -290,13 +279,13 @@ ALTER TABLE [gd_esquema].DESCUENTO_X_MEDIO_DE_PAGO ADD CONSTRAINT [FK_DESCUENTO_
 ALTER TABLE [gd_esquema].MEDIO_ENVIO_X_CODIGO_POSTAL ADD CONSTRAINT [FK_MEDIO_ENVIO_X_CODIGO_POSTAL.CODIGO_POSTAL] FOREIGN KEY ([CODIGO_POSTAL]) REFERENCES [gd_esquema].[CODIGO_POSTAL]([CODIGO_POSTAL])
 
 ALTER TABLE [gd_esquema].VENTA ADD CONSTRAINT [FK_VENTA.ID_MEDIO_PAGO] FOREIGN KEY ([ID_MEDIO_PAGO]) REFERENCES [gd_esquema].[MEDIO_DE_PAGO]([ID_MEDIO_PAGO])
-------
+
 ALTER TABLE [gd_esquema].VENTA ADD CONSTRAINT [FK_VENTA.ID_MEDIO_ENVIO] FOREIGN KEY ([ID_MEDIO_ENVIO]) REFERENCES [gd_esquema].[MEDIO_ENVIO_X_CODIGO_POSTAL]([ID_MEDIO_ENVIO])
-------
+
 ALTER TABLE [gd_esquema].VENTA ADD CONSTRAINT [FK_VENTA.ID_CANAL_VENTA] FOREIGN KEY ([ID_CANAL_VENTA]) REFERENCES [gd_esquema].[CANAL_VENTA]([ID_CANAL_VENTA])
 ALTER TABLE [gd_esquema].VENTA ADD CONSTRAINT [FK_VENTA.ID_CLIENTE] FOREIGN KEY ([ID_CLIENTE]) REFERENCES [gd_esquema].[CLIENTE]([ID_CLIENTE])
 
---CHEQUEAR:
+
 ALTER TABLE [gd_esquema].PRODUCTO ADD CONSTRAINT [FK_PRODUCTO.ID_MARCA] FOREIGN KEY ([ID_MARCA_PROD]) REFERENCES [gd_esquema].[MARCA]([ID_MARCA])
 ALTER TABLE [gd_esquema].PRODUCTO ADD CONSTRAINT [FK_PRODUCTO.ID_CATEGORIA] FOREIGN KEY ([ID_CATEGORIA_PROD]) REFERENCES [gd_esquema].[CATEGORIA]([ID_CATEGORIA])
 ALTER TABLE [gd_esquema].PRODUCTO ADD CONSTRAINT [FK_PRODUCTO.ID_MATERIAL] FOREIGN KEY ([ID_MATERIAL_PROD]) REFERENCES [gd_esquema].[MATERIAL]([ID_MATERIAL])
@@ -334,12 +323,6 @@ BEGIN
 	CLOSE cursorc
 	DEALLOCATE cursorc
 END
-
-
-
-
---exec insertar_proveedor 
---DROP  PROCEDURE insertar_proveedor
 
 GO
 
@@ -412,7 +395,7 @@ BEGIN
 	DEALLOCATE cursorce
 END
 
---DROP  PROCEDURE insertar_variantes
+
 
 
 GO
@@ -431,7 +414,7 @@ BEGIN
 	WHILE (@@FETCH_STATUS = 0)
 	BEGIN
 		DECLARE @codProvincia decimal(19,0)
-		IF NOT EXISTS (SELECT 1 FROM gd_esquema.CODIGO_POSTAL WHERE CODIGO_POSTAL = @codPostal) --codigo_postal nuestra tabla
+		IF NOT EXISTS (SELECT 1 FROM gd_esquema.CODIGO_POSTAL WHERE CODIGO_POSTAL = @codPostal)
 		BEGIN
 
 		IF NOT EXISTS (SELECT 1 FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia)
@@ -441,7 +424,7 @@ BEGIN
 								END	
 
 			INSERT INTO gd_esquema.CODIGO_POSTAL (CODIGO_POSTAL, CODIGO_PROVINCIA)
-			values (@codPostal,(SELECT DISTINCT CODIGO_PROVINCIA FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia)) --distinct?
+			values (@codPostal,(SELECT DISTINCT CODIGO_PROVINCIA FROM gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia)) 
 		END
 		SELECT @codProvincia = CODIGO_PROVINCIA from gd_esquema.PROVINCIA WHERE NOMBRE_PROV = @provincia
 		INSERT INTO gd_esquema.CLIENTE (NOMBRE_CLIENTE,APELLIDO_CLIENTE,DNI_CLIENTE,DIRECCION_CLIENTE,TELEFONO_CLIENTE,MAIL_CLIENTE,FECHA_NAC_CLIENTE,LOCALIDAD_CLIENTE,CODIGO_POSTAL,CODIGO_PROVINCIA)
@@ -452,9 +435,6 @@ BEGIN
 	DEALLOCATE cursorx
 END
 
---DROP  PROCEDURE insertar_clientes
-
---SELECT * FROM gd_esquema.PROVINCIA
 
 GO
 
@@ -505,30 +485,24 @@ GO
 CREATE PROCEDURE [gd_esquema].insertar_compras
 AS
 BEGIN
-	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@totalCompra decimal(18,2),@cuit nvarchar(50)--,@codDescuentoCompra decimal(19,0),@prodVarianteCod nvarchar(50)
+	DECLARE @codCompra decimal(19,0),@fecha date,@medioPago nvarchar(255),@totalCompra decimal(18,2),@cuit nvarchar(50)
 	DECLARE cursorw CURSOR FOR 
 	SELECT DISTINCT COMPRA_NUMERO,COMPRA_FECHA,COMPRA_MEDIO_PAGO,COMPRA_TOTAL,PROVEEDOR_CUIT
 	FROM gd_esquema.Maestra WHERE COMPRA_NUMERO IS NOT NULL
 	OPEN cursorw
-	FETCH cursorw INTO @codCompra,@fecha,@medioPago,@totalCompra,@cuit--,@codDescuentoCompra,@prodVarianteCod
+	FETCH cursorw INTO @codCompra,@fecha,@medioPago,@totalCompra,@cuit
 	WHILE(@@FETCH_STATUS = 0)
 	BEGIN
 			
 		INSERT INTO gd_esquema.COMPRA (COD_COMPRA,FECHA_COMPRA,ID_MEDIO_PAGO, TOTAL_COMPRA,CUIT_PROV)
 		VALUES (@codCompra,@fecha,(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0),@totalCompra,@cuit)
-		/*
-		IF  @codDescuentoCompra IS NOT NULL
-			begin
-				INSERT INTO gd_esquema.DESCUENTO_X_COMPRA (COD_COMPRA,CODIGO_DESC_COMPRA)
-				VALUES (@codCompra,@codDescuentoCompra)
-			end
-		*/
-		FETCH cursorw INTO @codCompra,@fecha,@medioPago,@totalCompra,@cuit--,@codDescuentoCompra,@prodVarianteCod
+		
+		FETCH cursorw INTO @codCompra,@fecha,@medioPago,@totalCompra,@cuit
 	END
 	CLOSE cursorw
 	DEALLOCATE cursorw
 END
---DROP  PROCEDURE insertar_compras
+
 
 go
 
@@ -633,7 +607,7 @@ CREATE PROCEDURE [gd_esquema].insertar_compra_producto
 AS
 BEGIN
 	
-	--Violation of PRIMARY KEY constraint 'PK__COMPRA_P__E31C4D8D94175AED'. Cannot insert duplicate key in object 'gd_esquema.COMPRA_PRODUCTO'. The duplicate key value is (131232, 015HPH1YB6HEBMWAG).
+	
 	DECLARE @compraNum decimal(19,0),@prodVarCod nvarchar(50),@cant decimal(18,0),@precio decimal(18,2),@totalProd decimal (18,2)
 	DECLARE csd CURSOR FOR
 	SELECT COMPRA_NUMERO,PRODUCTO_VARIANTE_CODIGO,COMPRA_PRODUCTO_CANTIDAD,COMPRA_PRODUCTO_PRECIO,SUM(COMPRA_PRODUCTO_CANTIDAD*COMPRA_PRODUCTO_PRECIO) PRECIO_TOTAL_PRODUCTO
@@ -653,7 +627,7 @@ BEGIN
 		ELSE
 		BEGIN
 			UPDATE gd_esquema.COMPRA_PRODUCTO
-			SET CANTIDAD+=@cant --Arithmetic overflow error converting numeric to data type numeric.
+			SET CANTIDAD+=@cant 
 			WHERE COD_COMPRA=@compraNum AND COD_PRODUCTO_VARIANTE=@prodVarCod
 			UPDATE gd_esquema.COMPRA_PRODUCTO
 			SET PRECIO_TOTAL=PRECIO_UNIT*CANTIDAD
@@ -720,30 +694,7 @@ BEGIN
   @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
-	--hacer ciclo por cada renglon de la misma venta, ver si tiene descuento y/o cupon.
 	
-	
-	--DECLARE @codigoVentaAux decimal(19,0),@idMedioPago decimal(19,0)
-	--SET @codigoVentaAux=@codVenta
-	--WHILE(@codigoVentaAux=@codVenta)
-	--BEGIN
-	--	IF @descuentoConcepto IS NULL AND @descuentoValor IS NULL
-	--	SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
-	--	ELSE
-	--	BEGIN
-	--		IF @descuentoConcepto='Otros' 
-	--		BEGIN
-			
-	--		SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
-	--		END
-	--		IF @descuentoConcepto='Efectivo' OR @descuentoConcepto='Transferencia' SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor)
-	--		IF @descuentoConcepto='Tarjeta' SET @idMedioPago=(SELECT ID_MEDIO_PAGO FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=0)
-	--	END
-	--	FETCH NEXT FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
- -- 		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
-	--END
-	--FETCH PRIOR FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
- -- 		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
 		IF NOT EXISTS (SELECT 1 FROM gd_esquema.VENTA WHERE COD_VENTA=@codVenta)
 		BEGIN
 		INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO, CANAL_COSTO, COSTO_TRANSACCION)
@@ -850,32 +801,4 @@ END
 
 GO
 
---drop procedure insertar_todo
-
 exec [gd_esquema].insertar_todo
-
-
-
-
---DROP PROCEDURE insertar_proveedor 
---DROP PROCEDURE insertar_productos
---DROP PROCEDURE insertar_canales_venta
---DROP PROCEDURE insertar_variantes
---DROP PROCEDURE insertar_clientes
---DROP PROCEDURE insertar_descuentos_compra
---DROP PROCEDURE insertar_medio_envio_x_codigo_postal
---DROP PROCEDURE insertar_descuentos_cupon
---DROP PROCEDURE insertar_descuentos_fijo
-
---DROP PROCEDURE insertar_compras 
-
---DROP PROCEDURE insertar_medios_de_pago 
---DROP PROCEDURE insertar_descuentos_x_medio_de_pago
---DROP PROCEDURE insertar_producto_variante 
---DROP PROCEDURE insertar_compra_producto
---DROP PROCEDURE insertar_venta_producto 
---DROP PROCEDURE insertar_ventas 
---DROP PROCEDURE insertar_marca_categoria_y_material
---DROP PROCEDURE insertar_todo 
-
-select * from gd_esquema.COMPRA
