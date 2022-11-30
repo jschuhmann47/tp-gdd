@@ -555,6 +555,8 @@ BEGIN
   SELECT DISTINCT VENTA_MEDIO_PAGO, VENTA_DESCUENTO_IMPORTE/VENTA_TOTAL PORCENTAJE_DESCUENTO,VENTA_DESCUENTO_IMPORTE,VENTA_DESCUENTO_CONCEPTO
   FROM gd_esquema.Maestra
   WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_IMPORTE IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
+  UNION
+  SELECT 'Tarjeta',0,0,'Tarjeta'
   OPEN cursorm
   FETCH cursorm INTO @medioPago,@porcDescuento,@importe,@concepto
   WHILE (@@FETCH_STATUS = 0)
@@ -708,14 +710,14 @@ BEGIN
   VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE,CLIENTE_CODIGO_POSTAL, VENTA_ENVIO_PRECIO,CLIENTE_NOMBRE,CLIENTE_APELLIDO,VENTA_CANAL_COSTO
   FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL
   OPEN cursorvs
-  FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
+  FETCH cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod, --tarjeta no tiene desc
   @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
   WHILE(@@FETCH_STATUS = 0)
   BEGIN
-	
+	--hacer ciclo por cada renglon de la misma venta, ver si tiene descuento y/o cupon. lo mismo en compra
 	IF NOT EXISTS (SELECT 1 FROM gd_esquema.VENTA WHERE @codVenta=COD_VENTA)
 	BEGIN
-		IF @descuentoConcepto!='Otros' AND @descuentoConcepto IS NOT NULL
+		IF @descuentoConcepto!='Otros' AND @descuentoConcepto IS NOT NULL AND @descuentoValor IS NOT NULL
 		BEGIN
 			INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO, CANAL_COSTO, COSTO_TRANSACCION)
 			VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM gd_esquema.CLIENTE WHERE DNI_CLIENTE=@clienteDni AND NOMBRE_CLIENTE=@nombre AND APELLIDO_CLIENTE=@apellido), 
@@ -727,7 +729,7 @@ BEGIN
 				@canalCosto,
 				(SELECT COSTO_TRANSACCION FROM gd_esquema.MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medioPago AND VALOR_DESC=@descuentoValor))
 		END
-		ELSE
+		IF @descuentoConcepto='Otros' AND @descuentoConcepto IS NULL OR @descuentoValor IS NULL
 		BEGIN
 			INSERT INTO gd_esquema.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO, CANAL_COSTO, COSTO_TRANSACCION)
 			VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM gd_esquema.CLIENTE WHERE DNI_CLIENTE=@clienteDni AND NOMBRE_CLIENTE=@nombre AND APELLIDO_CLIENTE=@apellido), 
@@ -764,26 +766,26 @@ BEGIN
 	
 	BEGIN TRY
 		BEGIN TRANSACTION
-		exec insertar_proveedor
-		exec insertar_marca_categoria_y_material
-		exec insertar_productos
-		exec insertar_canales_venta
-		exec insertar_variantes
-		exec insertar_clientes
+		exec [gd_esquema].insertar_proveedor
+		exec [gd_esquema].insertar_marca_categoria_y_material
+		exec [gd_esquema].insertar_productos
+		exec [gd_esquema].insertar_canales_venta
+		exec [gd_esquema].insertar_variantes
+		exec [gd_esquema].insertar_clientes
 		
-		exec insertar_medio_envio_x_codigo_postal
-		exec insertar_descuentos_cupon
-		exec insertar_descuentos_fijo
-		exec insertar_medios_de_pago 
-		exec insertar_descuentos_compra
-		exec insertar_descuentos_x_medio_de_pago 
-		exec insertar_producto_variante
+		exec [gd_esquema].insertar_medio_envio_x_codigo_postal
+		exec [gd_esquema].insertar_descuentos_cupon
+		exec [gd_esquema].insertar_descuentos_fijo
+		exec [gd_esquema].insertar_medios_de_pago 
+		exec [gd_esquema].insertar_descuentos_compra
+		exec [gd_esquema].insertar_descuentos_x_medio_de_pago 
+		exec [gd_esquema].insertar_producto_variante
 		
-		exec insertar_compras 
-		exec insertar_compra_producto
+		exec [gd_esquema].insertar_compras 
+		exec [gd_esquema].insertar_compra_producto
 		
-		exec insertar_ventas 
-		exec insertar_venta_producto
+		exec [gd_esquema].insertar_ventas 
+		exec [gd_esquema].insertar_venta_producto
 		
 		COMMIT TRANSACTION
 	END TRY
@@ -805,7 +807,7 @@ GO
 
 --drop procedure insertar_todo
 
-exec insertar_todo
+exec [gd_esquema].insertar_todo
 
 
 
