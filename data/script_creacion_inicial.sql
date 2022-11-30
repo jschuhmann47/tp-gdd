@@ -546,6 +546,8 @@ BEGIN
 	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
 	UNION
 	SELECT 'Tarjeta',0,100.0
+	UNION
+	SELECT 'Billetera electronica',0,100.0
 
 END
 
@@ -876,3 +878,4 @@ exec [gd_esquema].insertar_todo
 --DROP PROCEDURE insertar_marca_categoria_y_material
 --DROP PROCEDURE insertar_todo 
 
+select * from gd_esquema.COMPRA
