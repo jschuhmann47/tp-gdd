@@ -162,7 +162,6 @@ CREATE PROCEDURE [gd_esquema].cargar_tiempo AS
             UNION
              SELECT DISTINCT YEAR(FECHA_VENTA), MONTH(FECHA_VENTA)
                 FROM [gd_esquema].VENTA
-            UNION
     END
 GO
 
@@ -245,9 +244,9 @@ GO
 CREATE PROCEDURE [gd_esquema].cargar_compras AS
     BEGIN
       DECLARE @fechaCompra DATE, @medioPagoId decimal(19,0),@totalCompra decimal(18,2),@cuit nvarchar(50)
-      DECLARE comc CURSOR FOR SELECT FECHA_COMPRA,ID_MEDIO_PAGO,TOTAL_COMPRA,CUIT_PROV FROM [gd_esquema].COMPRA
+      DECLARE comc CURSOR FOR SELECT FECHA_COMPRA,ID_MEDIO_PAGO,TOTAL_COMPRA,CUIT_PROV,COD_COMPRA FROM [gd_esquema].COMPRA
       OPEN comc
-      FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@totalCompra,@cuit
+      FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@totalCompra,@cuit,@codCompra
       WHILE(@@FETCH_STATUS = 0)
       BEGIN
         DECLARE @descuentos decimal(18,2)
@@ -267,6 +266,7 @@ CREATE PROCEDURE [gd_esquema].cargar_compras AS
         END
         CLOSE comcp
         DEALLOCATE comcp
+        FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@totalCompra,@cuit,@codCompra
       END
       CLOSE comc
       DEALLOCATE comc
@@ -385,7 +385,7 @@ CREATE VIEW top_5_categorias_x_rango_etario_x_mes (RANGO_ETARIO,CANTIDAD_PRODUCT
 AS
   BEGIN
     SELECT 
-    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=obtener_id_rango_etario(fecha_nac)), --
+    (SELECT RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE ID_RANGO_ETARIO=v.ID_RANGO_ETARIO),
     CATEGORIA,
     MES,
     ANIO,
@@ -403,13 +403,13 @@ GO
 -- por medio de pago (en caso que aplique) y descuentos por medio de pago
 -- (en caso que aplique)
 
-CREATE VIEW total_ingresos_medio_pago_x_mes (...)
+CREATE VIEW total_ingresos_medio_pago_x_mes (MEDIO_PAGO,MES,ANIO,TOTAL_INGRESOS)
 AS
   BEGIN
-    SELECT (SELECT MEDIO FROM [gd_esquema].BI_DIM_MEDIO_PAGO m WHERE ID_MEDIO_PAGO=m.ID_MEDIO_PAGO),
+    SELECT (SELECT MEDIO FROM [gd_esquema].BI_DIM_MEDIO_PAGO m WHERE ID_MEDIO_PAGO=m.ID_MEDIO_PAGO) MEDIO_PAGO,
     MES,
     ANIO,
-    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO (asi no deberia sumarse, sumar uno por cada venta)) - SUM(DESCUENTOS) --
+    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO) - SUM(TOTAL_DESCUENTOS) -- (asi no deberia sumarse, sumar uno por cada venta)
     FROM [gd_esquema].BI_HECHOS_VENTAS v
     JOIN [gd_esquema].BI_DIM_TIEMPO t ON t.ID_FECHA = v.ID_FECHA
     GROUP BY MEDIO_PAGO,MES,ANIO
@@ -425,12 +425,13 @@ CREATE VIEW importe_total_segun_descuento (IMPORTE_TOTAL, TIPO_DE_DESCUENTO, CAN
 AS
   BEGIN
 
-        SELECT descuento.TOTAL_DESCUENTO, tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES 
+        SELECT SUM(descuento.TOTAL_DESCUENTO), tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES 
         FROM [gd_esquema].[BI_HECHOS_DESCUENTOS] descuento
         JOIN [gd_esquema].[BI_DIM_TIPO_DESCUENTO] tipo ON (descuento.ID_TIPO_DESCUENTO = tipo.ID_TIPO_DESCUENTO)
         JOIN [gd_esquema].[BI_HECHOS_VENTAS] venta ON (venta.ID_DESC = descuento.DESCUENTO_ID)
         JOIN [gd_esquema].[BI_DIM_CANAL_VENTA] canal_venta ON (venta.ID_CANAL_VENTA = canal_venta.ID_CANAL_VENTA)
         JOIN [gd_esquema].[BI_DIM_TIEMPO] fecha ON (fecha.ID_FECHA = descuento.ID_FECHA)
+        GROUP BY tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES
 
   END
 GO  
@@ -464,8 +465,7 @@ GO
 
 -- Valor promedio de envío por Provincia por Medio De Envío anual.
 
-CREATE VIEW valor_promedio_envio_por_medio_por_provincia_anual
-(ANIO, MEDIO_DE_ENVIO, VALOR_PROMEDIO)
+CREATE VIEW valor_promedio_envio_por_medio_por_provincia_anual (ANIO, MEDIO_DE_ENVIO, VALOR_PROMEDIO)
 AS
   BEGIN
     SELECT t.ANIO, e.MEDIO, p.NOMBRE_PROV, 
@@ -490,12 +490,11 @@ AS
   BEGIN
 
        SELECT proveedor.RAZON_SOCIAL_PROV,
-      ( 
-      SELECT ( ( max(compra.TOTAL_PRODUCTO) - min(compra.TOTAL_PRODUCTO) ) / ( min(compra.TOTAL_PRODUCTO)  ) )
-      FROM [gd_esquema].[BI_DIM_PROVEEDOR] proveedor_dos WHERE ( proveedor_dos.ID_PROVEEDOR = proveedor.ID_PROVEEDOR )  
-      JOIN [gd_esquema].[BI_HECHOS_COMPRAS] compra ON (proveedor.ID_PROVEEDOR = compra.ID_PROVEEDOR AND compra.ID_FECHA = fecha.ID_FECHA)
-       )
-      FROM [gd_esquema].[BI_DIM_PROVEEDOR] proveedor, [gd_esquema].[BI_DIM_TIEMPO] fecha
+      (max(c.TOTAL_PRODUCTO) - min(c.TOTAL_PRODUCTO)) / (min(c.TOTAL_PRODUCTO)),
+      f.ANIO
+      FROM [gd_esquema].[BI_HECHOS_COMPRAS] c
+      JOIN [gd_esquema].[BI_DIM_TIEMPO] f ON c.ID_FECHA=f.ID_FECHA
+      JOIN [gd_esquema].[BI_DIM_PROVEEDOR] p ON (p.ID_PROVEEDOR = c.ID_PROVEEDOR)
       GROUP BY proveedor, fecha.ANIO
        
   END
@@ -505,7 +504,9 @@ GO
 CREATE VIEW top_3_prod_mayor_reposicion_x_mes (PRODUCTO,MES,ANIO,CANTIDAD_COMPRADA,RANKING)
 AS
   BEGIN
-    SELECT NOMBRE_PROD,MES,ANIO,
+    SELECT NOMBRE_PROD,
+    MES,
+    ANIO,
     SUM(CANTIDAD_PRODUCTO) CANTIDAD_COMPRADA,
     ROW_NUMBER() OVER (PARTITION BY MES,ANIO Order by SUM(CANTIDAD_PRODUCTO) DESC) AS Ranking
     FROM [gd_esquema].BI_HECHOS_COMPRAS c
@@ -598,4 +599,31 @@ CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_mes_y_anio(MES, ANIO) RETURNS
     ) Tabla
     RETURN @cant
   END
+GO
+
+
+CREATE PROCEDURE [gd_esquema].insertar_todo_bi
+AS
+BEGIN
+	
+	BEGIN TRY
+		BEGIN TRANSACTION
+		exec [gd_esquema].insertar_proveedor
+    --etc
+		COMMIT TRANSACTION
+	END TRY
+	BEGIN CATCH 
+        SELECT
+            ERROR_NUMBER() AS ErrorNumber,
+            ERROR_SEVERITY() AS ErrorSeverity,
+            ERROR_STATE() AS ErrorState,
+            ERROR_PROCEDURE() AS ErrorProcedure,
+            ERROR_LINE() AS ErrorLine,
+            ERROR_MESSAGE() AS ErrorMessage
+
+            ROLLBACK TRANSACTION
+    END CATCH
+	
+END
+
 GO
