@@ -142,7 +142,7 @@ ALTER TABLE [gd_esquema].[BI_HECHOS_VENTAS] ADD CONSTRAINT [DESCUENTO_ID] FOREIG
 
 ALTER TABLE [gd_esquema].[BI_HECHOS_COMPRAS] ADD CONSTRAINT [FK_COMPRA_ID_FECHA] FOREIGN KEY ([ID_FECHA]) REFERENCES [gd_esquema].[BI_DIM_TIEMPO]([ID_FECHA])
 ALTER TABLE [gd_esquema].[BI_HECHOS_COMPRAS] ADD CONSTRAINT [FK_ID_PROVEEDOR] FOREIGN KEY ([ID_PROVEEDOR]) REFERENCES [gd_esquema].[BI_DIM_PROVEEDOR]([ID_PROVEEDOR])
-ALTER TABLE [gd_esquema].[BI_HECHOS_COMPRAS] ADD CONSTRAINT [COD_PROD] FOREIGN KEY ([COD_PROD]) REFERENCES [gd_esquema].[BI_DIM_PRODUCTO]([COD_PROD])
+ALTER TABLE [gd_esquema].[BI_HECHOS_COMPRAS] ADD CONSTRAINT [FK_COD_PROD] FOREIGN KEY ([COD_PROD]) REFERENCES [gd_esquema].[BI_DIM_PRODUCTO]([COD_PROD])
 
 
 ALTER TABLE [gd_esquema].[BI_HECHOS_DESCUENTOS] ADD CONSTRAINT [FK_DESCUENTO.ID_FECHA] FOREIGN KEY ([ID_FECHA]) REFERENCES [gd_esquema].[BI_DIM_TIEMPO]([ID_FECHA])
@@ -190,7 +190,7 @@ GO
 CREATE PROCEDURE [gd_esquema].cargar_medios_pago AS
     BEGIN
         INSERT INTO [gd_esquema].BI_DIM_MEDIO_PAGO (ID_MEDIO_PAGO,MEDIO_PAGO) 
-        SELECT ID_MEDIO_PAGO,MEDIO_PAGO FROM [gd_esquema].[MEDIO_PAGO]
+        SELECT ID_MEDIO_PAGO,MEDIO_PAGO FROM [gd_esquema].[MEDIO_DE_PAGO] --distinct?
     END
 GO
 
@@ -198,10 +198,9 @@ GO
 CREATE PROCEDURE [gd_esquema].cargar_categorias_prod AS
     BEGIN
         INSERT INTO [gd_esquema].BI_DIM_CATEGORIA_PRODUCTO (ID_CATEGORIA,CATEGORIA) 
-        SELECT ID_CATEGORIA,CATEGORIA FROM [gd_esquema].[CATEGORIA]
+        SELECT ID_CATEGORIA,CATEGORIA FROM [gd_esquema].[CATEGORIA] --mal, estan las marcas guardadas ahi (corregido en datos pero no en la base actual)
     END
 GO
-
 
 CREATE PROCEDURE [gd_esquema].cargar_productos AS
     BEGIN
@@ -221,7 +220,7 @@ GO
 CREATE PROCEDURE [gd_esquema].cargar_tipos_envio AS
     BEGIN
         INSERT INTO [gd_esquema].BI_DIM_TIPO_ENVIO (ID_MEDIO_ENVIO,MEDIO) 
-        SELECT DISTINCT ID_MEDIO_ENVIO,MEDIO FROM [gd_esquema].[MEDIO_ENVIO_X_CODIGO_POSTAL] --hay q agregar cod postal?
+        SELECT DISTINCT ID_MEDIO_ENVIO,MEDIO FROM [gd_esquema].[MEDIO_ENVIO_X_CODIGO_POSTAL] --hay q agregar cod postal? sino se repiten
     END
 GO
 
@@ -502,7 +501,8 @@ CREATE VIEW [gd_esquema].top_5_productos_x_rentabilidad (NOMBRE_PRODUCTO,RENTABI
 AS
   
   SELECT TOP 5 NOMBRE_PROD,[gd_esquema].obtener_rentabilidad_producto(COD_PROD) RENTABILIDAD
-  ORDER BY obtener_rentabilidad_producto(COD_PROD)
+  FROM [gd_esquema].BI_DIM_PRODUCTO
+  ORDER BY [gd_esquema].obtener_rentabilidad_producto(COD_PROD)
   
 GO
 
