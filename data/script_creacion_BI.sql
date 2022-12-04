@@ -4,8 +4,8 @@ GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_TIEMPO](
     [ID_FECHA] decimal(19,0) IDENTITY(1,1),
-    [MES] decimal(2,0),
-    [ANIO] decimal(4,0),
+    [MES] INT,
+    [ANIO] INT,
     PRIMARY KEY  ([ID_FECHA])
 );
 
@@ -44,7 +44,7 @@ CREATE TABLE [gd_esquema].[BI_DIM_MEDIO_PAGO](
 GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_CATEGORIA_PRODUCTO](
-  [ID_CATEGORIA] decimal(19,0) IDENTITY (1,1),
+  [ID_CATEGORIA] decimal(19,0),
   [CATEGORIA] nvarchar(255),
   PRIMARY KEY ([ID_CATEGORIA])
 );
@@ -76,16 +76,15 @@ CREATE TABLE [gd_esquema].[BI_DIM_TIPO_ENVIO](
 GO
 
 CREATE TABLE [gd_esquema].[BI_DIM_PROVEEDOR](
-  [ID_PROVEEDOR] decimal(19,0), --pk no identity
+  [ID_PROVEEDOR] nvarchar(50), --es el cuit
   [RAZON_SOCIAL_PROV] nvarchar(255)
   PRIMARY KEY ([ID_PROVEEDOR])
 )
 GO
 
-
 CREATE TABLE [gd_esquema].[BI_HECHOS_COMPRAS](
     [ID_FECHA] decimal(19,0), --fk
-    [ID_PROVEEDOR] decimal(19,0), --fk
+    [ID_PROVEEDOR] nvarchar(50), --fk
     [COD_PROD] nvarchar(50), --fk
     [TOTAL_PRODUCTO] decimal(18,2),
     [CANTIDAD_PRODUCTO] decimal(19,0),
@@ -189,8 +188,8 @@ GO
 
 CREATE PROCEDURE [gd_esquema].cargar_medios_pago AS
     BEGIN
-        INSERT INTO [gd_esquema].BI_DIM_MEDIO_PAGO (ID_MEDIO_PAGO,MEDIO_PAGO) 
-        SELECT ID_MEDIO_PAGO,MEDIO_PAGO FROM [gd_esquema].[MEDIO_DE_PAGO] --distinct?
+        INSERT INTO [gd_esquema].BI_DIM_MEDIO_PAGO (MEDIO_PAGO) 
+        SELECT DISTINCT MEDIO_PAGO FROM [gd_esquema].[MEDIO_DE_PAGO] --distinct?
     END
 GO
 
@@ -475,6 +474,10 @@ BEGIN
     END CATCH
 	
 END
+
+GO
+
+EXEC [gd_esquema].insertar_todo_bi
 
 GO
 
