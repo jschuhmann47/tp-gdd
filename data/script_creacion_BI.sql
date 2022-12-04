@@ -450,7 +450,16 @@ BEGIN
 		BEGIN TRANSACTION
 		exec [gd_esquema].cargar_tiempo
 		exec [gd_esquema].cargar_rangos_etarios
-    --etc
+    exec [gd_esquema].cargar_provincias
+    exec [gd_esquema].cargar_canales_venta
+    exec [gd_esquema].cargar_medios_pago
+    exec [gd_esquema].cargar_categorias_prod
+    exec [gd_esquema].cargar_productos
+    exec [gd_esquema].cargar_tipos_descuento
+    exec [gd_esquema].cargar_tipos_envio
+    exec [gd_esquema].cargar_proveedores
+    exec [gd_esquema].cargar_compras
+    exec [gd_esquema].cargar_ventas
 		COMMIT TRANSACTION
 	END TRY
 	BEGIN CATCH 
@@ -535,13 +544,13 @@ CREATE VIEW [gd_esquema].total_ingresos_medio_pago_x_mes (MEDIO_PAGO,MES,ANIO,TO
 AS
   
     SELECT 
-	mp.MEDIO_PAGO,
+	  mp.MEDIO_PAGO,
     MES,
     ANIO,
-    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO) - SUM(TOTAL_DESCUENTOS) -- (asi no deberia sumarse, sumar uno por cada venta)
+    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO) - SUM(TOTAL_DESCUENTOS) --ventas repetidas no se si afectan o no
     FROM [gd_esquema].BI_HECHOS_VENTAS v
     JOIN [gd_esquema].BI_DIM_TIEMPO t ON t.ID_FECHA = v.ID_FECHA
-	JOIN [gd_esquema].BI_DIM_MEDIO_PAGO mp ON mp.ID_MEDIO_PAGO=v.ID_MEDIO_PAGO
+	  JOIN [gd_esquema].BI_DIM_MEDIO_PAGO mp ON mp.ID_MEDIO_PAGO=v.ID_MEDIO_PAGO
     GROUP BY MEDIO_PAGO,MES,ANIO
   
 GO
@@ -551,7 +560,7 @@ GO
 -- canal de venta, por mes. Se entiende por tipo de descuento como los
 -- correspondientes a envío, medio de pago, cupones, etc)
 
-CREATE VIEW importe_total_segun_descuento (IMPORTE_TOTAL, TIPO_DE_DESCUENTO, CANAL_DE_VENTA, MES)
+CREATE VIEW [gd_esquema].importe_total_segun_descuento (IMPORTE_TOTAL, TIPO_DE_DESCUENTO, CANAL_DE_VENTA, MES)
 AS
   
     SELECT SUM(descuento.TOTAL_DESCUENTO), tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES 
@@ -569,7 +578,7 @@ GO
 -- debe representar la cantidad de envíos realizados a cada provincia sobre
 -- total de envío mensuales.
 
-CREATE VIEW [gd_esquema]. porcentaje_envio_realizado_provincia_x_mes(PROVINCIA, PORCENTAJE, MES, ANIO)
+CREATE VIEW [gd_esquema].porcentaje_envio_realizado_provincia_x_mes(PROVINCIA, PORCENTAJE, MES, ANIO)
 AS
   
 
@@ -589,7 +598,7 @@ GO
 
 -- Valor promedio de envío por Provincia por Medio De Envío anual.
 
-CREATE VIEW [gd_esquema]. valor_promedio_envio_por_medio_por_provincia_anual (ANIO, MEDIO_DE_ENVIO,PROVINCIA, VALOR_PROMEDIO)
+CREATE VIEW [gd_esquema].valor_promedio_envio_por_medio_por_provincia_anual (ANIO, MEDIO_DE_ENVIO,PROVINCIA, VALOR_PROMEDIO)
 AS
   
     SELECT t.ANIO, e.MEDIO, p.NOMBRE_PROV, 
@@ -608,7 +617,7 @@ GO
 -- el mínimo todo esto divido el mínimo precio del año. Teniendo en cuenta
 -- que los precios siempre van en aumento.
 
-CREATE VIEW [gd_esquema]. aumento_promedio_precios_x_proveedor_anual ( RAZON_SOCIAL, AUMENTO_PROMEDIO, ANIO)
+CREATE VIEW [gd_esquema].aumento_promedio_precios_x_proveedor_anual ( RAZON_SOCIAL, AUMENTO_PROMEDIO, ANIO)
 AS
     SELECT p.RAZON_SOCIAL_PROV,
     (max(c.TOTAL_PRODUCTO) - min(c.TOTAL_PRODUCTO)) / (min(c.TOTAL_PRODUCTO)),
@@ -620,14 +629,14 @@ AS
 GO  
 
 -- Los 3 productos con mayor cantidad de reposición por mes.
-CREATE VIEW [gd_esquema]. top_3_prod_mayor_reposicion_x_mes (PRODUCTO,MES,ANIO,CANTIDAD_COMPRADA,RANKING) 
+CREATE VIEW [gd_esquema].top_3_prod_mayor_reposicion_x_mes (PRODUCTO,MES,ANIO,CANTIDAD_COMPRADA,RANKING) 
 AS
   
 	SELECT NOMBRE_PROD,
 	MES,
 	ANIO,
 	SUM(CANTIDAD_PRODUCTO) CANTIDAD_COMPRADA,
-	ROW_NUMBER() OVER (PARTITION BY MES,ANIO Order by SUM(CANTIDAD_PRODUCTO) DESC) AS Ranking --FALTA LO DEL TOP 3
+	ROW_NUMBER() OVER (PARTITION BY MES,ANIO Order by SUM(CANTIDAD_PRODUCTO) DESC) AS Ranking --TOP 3 EN EL SELECT
 	FROM [gd_esquema].BI_HECHOS_COMPRAS c
 	JOIN [gd_esquema].BI_DIM_PRODUCTO p ON p.COD_PROD=c.COD_PROD
 	JOIN [gd_esquema].BI_DIM_TIEMPO t ON c.ID_FECHA=t.ID_FECHA
@@ -635,3 +644,20 @@ AS
   
 GO
 
+-- SELECT DE LAS VISTAS
+
+SELECT * FROM [gd_esquema].ganancias_mensuales_x_canal_venta
+
+SELECT * FROM [gd_esquema].top_5_productos_x_rentabilidad
+
+SELECT * FROM [gd_esquema].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5
+
+SELECT * FROM [gd_esquema].total_ingresos_medio_pago_x_mes
+
+SELECT * FROM [gd_esquema].importe_total_segun_descuento
+
+SELECT * FROM [gd_esquema].valor_promedio_envio_por_medio_por_provincia_anual 
+
+SELECT * FROM [gd_esquema].aumento_promedio_precios_x_proveedor_anual
+
+SELECT * FROM [gd_esquema].top_3_prod_mayor_reposicion_x_mes WHERE RANKING <= 3
