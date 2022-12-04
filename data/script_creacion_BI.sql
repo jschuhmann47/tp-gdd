@@ -316,7 +316,7 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
           (ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
           ,COD_PROD,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
           MEDIO_ENVIO_COSTO,MEDIO_PAGO_COSTO,CANAL_VENTA_COSTO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
-          VALUES ([gd_esquema].obtener_id_tiempo(@fecha),[gd_esquema].obtener_id_provincia(@codVenta),[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
+          VALUES ([gd_esquema].obtener_id_tiempo(@fecha),[gd_esquema].obtener_id_provincia(@idMedioEnvio),[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
           @idCanalVenta,@idMedioPago,[gd_esquema].obtener_id_categoria(@codProdVar),@codProdVar,@idMedioEnvio,NULL,@totalVenta,
           @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@precioTotalProd)
           FETCH NEXT FROM cvenp INTO @cantidad,@precioUnit,@precioTotalProd,@codProdVar
@@ -587,17 +587,23 @@ CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_mes_y_anio(@mes decimal(2,0),
   END
 GO
 
-CREATE FUNCTION [gd_esquema].obtener_id_provincia(@codVenta decimal(19,0)) RETURNS DECIMAL(19,0) AS
+CREATE FUNCTION [gd_esquema].obtener_id_provincia(@idMedioEnvio decimal(19,0)) RETURNS DECIMAL(19,0) AS
   BEGIN
-  --todo
-  RETURN 1
+  DECLARE @codProd DECIMAL(19,0)
+  SET @codProd = (SELECT cp.CODIGO_PROVINCIA FROM [gd_esquema].MEDIO_ENVIO_X_CODIGO_POSTAL m
+  JOIN [gd_esquema].CODIGO_POSTAL cp ON m.CODIGO_POSTAL=cp.CODIGO_POSTAL
+  WHERE m.ID_MEDIO_ENVIO=@idMedioEnvio)
+  RETURN @codProd
   END
 GO
 
 CREATE FUNCTION [gd_esquema].obtener_id_categoria(@codProdVar nvarchar(50))  RETURNS DECIMAL(19,0) AS
   BEGIN
-  --todo
-  RETURN 1
+  DECLARE @idCat decimal(19,0)
+  SET @idCat = (SELECT ID_CATEGORIA_PROD FROM [gd_esquema].PRODUCTO_VARIANTE pv
+  JOIN [gd_esquema].PRODUCTO p ON pv.COD_PROD=p.COD_PROD
+  WHERE pv.COD_PRODUCTO_VARIANTE=@codProdVar)
+  RETURN @idCat
   END
 GO
 
