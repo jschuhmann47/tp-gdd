@@ -333,6 +333,144 @@ GO
 
 
 
+--FUNCIONES
+
+CREATE FUNCTION [gd_esquema].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMAL(19,0) AS
+	BEGIN
+		DECLARE @edad_id DECIMAL(19,0), @edad INT, @fecha_actual DATE
+		SELECT @edad = (DATEDIFF(DAY, @fecha, GETDATE()) / 365)
+
+		SELECT @edad_id =
+			CASE 
+				WHEN @edad BETWEEN 0 AND 24 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '<25')
+				WHEN @edad BETWEEN 25 AND 34 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[25-35)')
+        WHEN @edad BETWEEN 35 AND 55 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[35-55]')
+				ELSE (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '>55')
+			END
+
+		RETURN @edad_id
+	END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_id_tiempo(@fecha DATE) RETURNS DECIMAL(19,0) AS
+	BEGIN
+    DECLARE @anioFecha INT, @mesFecha INT, @idTiempo INT
+
+    SET @anioFecha = DATEPART(YEAR, @fecha)
+    SET @mesFecha = DATEPART(MONTH, @fecha)
+
+    SELECT @idTiempo = ID_FECHA
+    FROM [gd_esquema].BI_DIM_TIEMPO
+    WHERE ANIO = @anioFecha AND MES = @mesFecha
+
+    RETURN @idTiempo
+  END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_rentabilidad_producto(@idProd decimal(19,0)) RETURNS DECIMAL(18,2) AS
+  BEGIN
+    DECLARE @rentabilidad decimal(19,0)
+    SET @rentabilidad = (SELECT (SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_COMPRA))/SUM(v.TOTAL_PRODUCTO)
+    FROM [gd_esquema].BI_HECHOS_VENTAS v 
+    JOIN [gd_esquema].BI_HECHOS_COMPRAS c ON v.COD_PROD=c.COD_PROD
+    JOIN [gd_esquema].BI_DIM_TIEMPO t ON v.ID_FECHA=t.ID_FECHA
+    WHERE t.ANIO = YEAR(GETDATE()))
+
+    RETURN @rentabilidad
+  END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_id_tipo_descuento(@tipoDesc char(20)) RETURNS DECIMAL(19,0) AS
+  BEGIN
+    DECLARE @id DECIMAL(19,0)
+    SET @id = (SELECT ID_TIPO_DESCUENTO FROM [gd_esquema].BI_DIM_TIPO_DESCUENTO WHERE TIPO_DESCUENTO=@tipoDesc)
+    RETURN @id
+  END
+GO
+
+
+CREATE FUNCTION [gd_esquema].obtener_cant_ventas() RETURNS DECIMAL(19,0) AS
+  BEGIN
+    DECLARE @cant DECIMAL(19,0)
+    SELECT @cant=COUNT(*) FROM (SELECT DISTINCT ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO FROM [gd_esquema].BI_HECHOS_VENTAS) Tabla
+    RETURN @cant
+  END
+GO
+
+
+CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_provincia(@codProd decimal(19,0)) RETURNS DECIMAL(19,0) AS
+  BEGIN
+    DECLARE @cant DECIMAL(19,0)
+    SET @cant = (SELECT COUNT(*) FROM (SELECT DISTINCT ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO 
+	FROM [gd_esquema].BI_HECHOS_VENTAS ventas 
+	WHERE ventas.CODIGO_PROVINCIA = @codProd) AS s)
+    RETURN @cant
+  END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_mes_y_anio(@mes decimal(2,0), @anio decimal(4,0)) RETURNS DECIMAL(19,0) AS
+  BEGIN
+    DECLARE @cant DECIMAL(19,0)
+    SET @cant= (SELECT COUNT(*) FROM 
+    (
+    SELECT DISTINCT venta.ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO 
+	FROM [gd_esquema].BI_HECHOS_VENTAS venta 
+	JOIN [gd_esquema].[BI_DIM_TIEMPO] fecha ON ( venta.ID_FECHA = fecha.ID_FECHA ) 
+	WHERE fecha.MES = @mes AND fecha.ANIO = @anio
+    ) Tabla )
+    RETURN @cant
+  END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_id_provincia(@idMedioEnvio decimal(19,0)) RETURNS DECIMAL(19,0) AS
+  BEGIN
+  DECLARE @codProd DECIMAL(19,0)
+  SET @codProd = (SELECT cp.CODIGO_PROVINCIA FROM [gd_esquema].MEDIO_ENVIO_X_CODIGO_POSTAL m
+  JOIN [gd_esquema].CODIGO_POSTAL cp ON m.CODIGO_POSTAL=cp.CODIGO_POSTAL
+  WHERE m.ID_MEDIO_ENVIO=@idMedioEnvio)
+  RETURN @codProd
+  END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_id_categoria(@codProdVar nvarchar(50))  RETURNS DECIMAL(19,0) AS
+  BEGIN
+  DECLARE @idCat decimal(19,0)
+  SET @idCat = (SELECT ID_CATEGORIA_PROD FROM [gd_esquema].PRODUCTO_VARIANTE pv
+  JOIN [gd_esquema].PRODUCTO p ON pv.COD_PROD=p.COD_PROD
+  WHERE pv.COD_PRODUCTO_VARIANTE=@codProdVar)
+  RETURN @idCat
+  END
+GO
+
+
+CREATE PROCEDURE [gd_esquema].insertar_todo_bi
+AS
+BEGIN
+	
+	BEGIN TRY
+		BEGIN TRANSACTION
+		exec [gd_esquema].cargar_tiempo
+		exec [gd_esquema].cargar_rangos_etarios
+    --etc
+		COMMIT TRANSACTION
+	END TRY
+	BEGIN CATCH 
+        SELECT
+            ERROR_NUMBER() AS ErrorNumber,
+            ERROR_SEVERITY() AS ErrorSeverity,
+            ERROR_STATE() AS ErrorState,
+            ERROR_PROCEDURE() AS ErrorProcedure,
+            ERROR_LINE() AS ErrorLine,
+            ERROR_MESSAGE() AS ErrorMessage
+
+            ROLLBACK TRANSACTION
+    END CATCH
+	
+END
+
+GO
+
+
 --VISTAS
 
 /*
@@ -497,139 +635,3 @@ AS
   
 GO
 
-
---FUNCIONES
-
-CREATE FUNCTION [gd_esquema].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMAL(19,0) AS
-	BEGIN
-		DECLARE @edad_id DECIMAL(19,0), @edad INT, @fecha_actual DATE
-		SELECT @edad = (DATEDIFF(DAY, @fecha, GETDATE()) / 365)
-
-		SELECT @edad_id =
-			CASE 
-				WHEN @edad BETWEEN 0 AND 24 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '<25')
-				WHEN @edad BETWEEN 25 AND 34 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[25-35)')
-        WHEN @edad BETWEEN 35 AND 55 THEN (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '[35-55]')
-				ELSE (SELECT ID_RANGO_ETARIO FROM [gd_esquema].BI_DIM_RANGO_ETARIO WHERE RANGO_ETARIO = '>55')
-			END
-
-		RETURN @edad_id
-	END
-GO
-
-CREATE FUNCTION [gd_esquema].obtener_id_tiempo(@fecha DATE) RETURNS DECIMAL(19,0) AS
-	BEGIN
-    DECLARE @anioFecha INT, @mesFecha INT, @idTiempo INT
-
-    SET @anioFecha = DATEPART(YEAR, @fecha)
-    SET @mesFecha = DATEPART(MONTH, @fecha)
-
-    SELECT @idTiempo = ID_FECHA
-    FROM [gd_esquema].BI_DIM_TIEMPO
-    WHERE ANIO = @anioFecha AND MES = @mesFecha
-
-    RETURN @idTiempo
-  END
-GO
-
-CREATE FUNCTION [gd_esquema].obtener_rentabilidad_producto(@idProd decimal(19,0)) RETURNS DECIMAL(18,2) AS
-  BEGIN
-    DECLARE @rentabilidad decimal(19,0)
-    SET @rentabilidad = (SELECT (SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_COMPRA))/SUM(v.TOTAL_PRODUCTO)
-    FROM [gd_esquema].BI_HECHOS_VENTAS v 
-    JOIN [gd_esquema].BI_HECHOS_COMPRAS c ON v.COD_PROD=c.COD_PROD
-    JOIN [gd_esquema].BI_DIM_TIEMPO t ON v.ID_FECHA=t.ID_FECHA
-    WHERE t.ANIO = YEAR(GETDATE()))
-
-    RETURN @rentabilidad
-  END
-GO
-
-CREATE FUNCTION [gd_esquema].obtener_id_tipo_descuento(@tipoDesc char(20)) RETURNS DECIMAL(19,0) AS
-  BEGIN
-    DECLARE @id DECIMAL(19,0)
-    SET @id = (SELECT ID_TIPO_DESCUENTO FROM [gd_esquema].BI_DIM_TIPO_DESCUENTO WHERE TIPO_DESCUENTO=@tipoDesc)
-    RETURN @id
-  END
-GO
-
-
-CREATE FUNCTION [gd_esquema].obtener_cant_ventas() RETURNS DECIMAL(19,0) AS
-  BEGIN
-    DECLARE @cant DECIMAL(19,0)
-    SELECT @cant=COUNT(*) FROM (SELECT DISTINCT ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO FROM [gd_esquema].BI_HECHOS_VENTAS) Tabla
-    RETURN @cant
-  END
-GO
-
-
-CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_provincia(@codProd decimal(19,0)) RETURNS DECIMAL(19,0) AS
-  BEGIN
-    DECLARE @cant DECIMAL(19,0)
-    SET @cant = (SELECT COUNT(*) FROM (SELECT DISTINCT ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO 
-	FROM [gd_esquema].BI_HECHOS_VENTAS ventas 
-	WHERE ventas.CODIGO_PROVINCIA = @codProd) AS s)
-    RETURN @cant
-  END
-GO
-
-CREATE FUNCTION [gd_esquema].obtener_cant_ventas_x_mes_y_anio(@mes decimal(2,0), @anio decimal(4,0)) RETURNS DECIMAL(19,0) AS
-  BEGIN
-    DECLARE @cant DECIMAL(19,0)
-    SET @cant= (SELECT COUNT(*) FROM 
-    (
-    SELECT DISTINCT venta.ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_MEDIO_ENVIO 
-	FROM [gd_esquema].BI_HECHOS_VENTAS venta 
-	JOIN [gd_esquema].[BI_DIM_TIEMPO] fecha ON ( venta.ID_FECHA = fecha.ID_FECHA ) 
-	WHERE fecha.MES = @mes AND fecha.ANIO = @anio
-    ) Tabla )
-    RETURN @cant
-  END
-GO
-
-CREATE FUNCTION [gd_esquema].obtener_id_provincia(@idMedioEnvio decimal(19,0)) RETURNS DECIMAL(19,0) AS
-  BEGIN
-  DECLARE @codProd DECIMAL(19,0)
-  SET @codProd = (SELECT cp.CODIGO_PROVINCIA FROM [gd_esquema].MEDIO_ENVIO_X_CODIGO_POSTAL m
-  JOIN [gd_esquema].CODIGO_POSTAL cp ON m.CODIGO_POSTAL=cp.CODIGO_POSTAL
-  WHERE m.ID_MEDIO_ENVIO=@idMedioEnvio)
-  RETURN @codProd
-  END
-GO
-
-CREATE FUNCTION [gd_esquema].obtener_id_categoria(@codProdVar nvarchar(50))  RETURNS DECIMAL(19,0) AS
-  BEGIN
-  DECLARE @idCat decimal(19,0)
-  SET @idCat = (SELECT ID_CATEGORIA_PROD FROM [gd_esquema].PRODUCTO_VARIANTE pv
-  JOIN [gd_esquema].PRODUCTO p ON pv.COD_PROD=p.COD_PROD
-  WHERE pv.COD_PRODUCTO_VARIANTE=@codProdVar)
-  RETURN @idCat
-  END
-GO
-
-
-CREATE PROCEDURE [gd_esquema].insertar_todo_bi
-AS
-BEGIN
-	
-	BEGIN TRY
-		BEGIN TRANSACTION
-		exec [gd_esquema].insertar_proveedor
-    --etc
-		COMMIT TRANSACTION
-	END TRY
-	BEGIN CATCH 
-        SELECT
-            ERROR_NUMBER() AS ErrorNumber,
-            ERROR_SEVERITY() AS ErrorSeverity,
-            ERROR_STATE() AS ErrorState,
-            ERROR_PROCEDURE() AS ErrorProcedure,
-            ERROR_LINE() AS ErrorLine,
-            ERROR_MESSAGE() AS ErrorMessage
-
-            ROLLBACK TRANSACTION
-    END CATCH
-	
-END
-
-GO

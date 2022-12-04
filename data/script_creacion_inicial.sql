@@ -752,6 +752,8 @@ CREATE FUNCTION [gd_esquema].obtener_id_medio_pago(@codVenta decimal(19,0)) RETU
 	RETURN (SELECT ID_MEDIO_PAGO FROM [gd_esquema].MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medio AND VALOR_DESC=0)
 	ELSE
 	RETURN (SELECT ID_MEDIO_PAGO FROM [gd_esquema].MEDIO_DE_PAGO WHERE MEDIO_PAGO=@medio AND VALOR_DESC=@importe)
+
+	return null
   END
 GO
 
@@ -802,3 +804,5 @@ END
 GO
 
 exec [gd_esquema].insertar_todo
+
+
