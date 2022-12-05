@@ -235,7 +235,8 @@ GO
 CREATE PROCEDURE [gd_esquema].cargar_compras AS
     BEGIN
       DECLARE @fechaCompra DATE, @medioPagoId decimal(19,0),@totalCompra decimal(18,2),@cuit nvarchar(50), @codCompra decimal(19,0)
-      DECLARE comc CURSOR FOR SELECT FECHA_COMPRA,ID_MEDIO_PAGO,TOTAL_COMPRA,CUIT_PROV,COD_COMPRA FROM [gd_esquema].COMPRA
+      DECLARE comc CURSOR FOR 
+	  SELECT FECHA_COMPRA,ID_MEDIO_PAGO,TOTAL_COMPRA,CUIT_PROV,COD_COMPRA FROM [gd_esquema].COMPRA
       OPEN comc
       FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@totalCompra,@cuit,@codCompra
       WHILE(@@FETCH_STATUS = 0)
@@ -251,9 +252,9 @@ CREATE PROCEDURE [gd_esquema].cargar_compras AS
         OPEN comcp
 		FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         WHILE(@@FETCH_STATUS = 0)
-        BEGIN
+        BEGIN --si no existe el producto ponerlo y sino sumarle al total prod
           INSERT INTO [gd_esquema].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO,TOTAL_COMPRA,TOTAL_DESCUENTO)
-          VALUES ([gd_esquema].obtener_id_tiempo(@fechaCompra),@cuit,@codigoProductoVar,@precioTotalProd,@cantidad,@totalCompra,@descuentos) --@codigoProductoVar no es codigo de producto, modelar variables?
+          VALUES ([gd_esquema].obtener_id_tiempo(@fechaCompra),@cuit,[gd_esquema].obtener_codigo_producto(@codigoProductoVar),@precioTotalProd,@cantidad,@totalCompra,@descuentos) --@codigoProductoVar no es codigo de producto, modelar variables?
           FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         END
         CLOSE comcp
@@ -311,12 +312,12 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
         FETCH NEXT FROM cvenp INTO @cantidad,@precioUnit,@precioTotalProd,@codProdVar
         WHILE(@@FETCH_STATUS = 0)
         BEGIN
-          INSERT INTO [gd_esquema].BI_DIM_CANAL_VENTA 
+          INSERT INTO [gd_esquema].BI_HECHOS_VENTAS 
           (ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
           ,COD_PROD,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
           MEDIO_ENVIO_COSTO,MEDIO_PAGO_COSTO,CANAL_VENTA_COSTO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
           VALUES ([gd_esquema].obtener_id_tiempo(@fecha),[gd_esquema].obtener_id_provincia(@idMedioEnvio),[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
-          @idCanalVenta,@idMedioPago,[gd_esquema].obtener_id_categoria(@codProdVar),@codProdVar,@idMedioEnvio,NULL,@totalVenta,
+          @idCanalVenta,@idMedioPago,[gd_esquema].obtener_id_categoria(@codProdVar),[gd_esquema].obtener_codigo_producto(@codProdVar),@idMedioEnvio,NULL,@totalVenta,
           @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@precioTotalProd)
           FETCH NEXT FROM cvenp INTO @cantidad,@precioUnit,@precioTotalProd,@codProdVar
         END
@@ -438,6 +439,15 @@ CREATE FUNCTION [gd_esquema].obtener_id_categoria(@codProdVar nvarchar(50))  RET
   JOIN [gd_esquema].PRODUCTO p ON pv.COD_PROD=p.COD_PROD
   WHERE pv.COD_PRODUCTO_VARIANTE=@codProdVar)
   RETURN @idCat
+  END
+GO
+
+CREATE FUNCTION [gd_esquema].obtener_codigo_producto(@codProdVar nvarchar(50)) RETURNS nvarchar(50) AS
+  BEGIN
+  DECLARE @codProd nvarchar(50)
+  SET @codProd = (SELECT COD_PROD FROM [gd_esquema].PRODUCTO_VARIANTE pv
+  WHERE pv.COD_PRODUCTO_VARIANTE=@codProdVar)
+  RETURN @codProd
   END
 GO
 
