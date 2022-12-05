@@ -253,8 +253,19 @@ CREATE PROCEDURE [gd_esquema].cargar_compras AS
 		FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         WHILE(@@FETCH_STATUS = 0)
         BEGIN --si no existe el producto ponerlo y sino sumarle al total prod
-          INSERT INTO [gd_esquema].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO,TOTAL_COMPRA,TOTAL_DESCUENTO)
-          VALUES ([gd_esquema].obtener_id_tiempo(@fechaCompra),@cuit,[gd_esquema].obtener_codigo_producto(@codigoProductoVar),@precioTotalProd,@cantidad,@totalCompra,@descuentos) --@codigoProductoVar no es codigo de producto, modelar variables?
+          IF NOT EXISTS (SELECT 1 FROM [gd_esquema].BI_HECHOS_COMPRAS WHERE ID_FECHA = [gd_esquema].obtener_id_tiempo(@fechaCompra) 
+          AND ID_PROVEEDOR = @cuit AND COD_PROD = [gd_esquema].obtener_codigo_producto(@codigoProductoVar))
+          BEGIN
+            INSERT INTO [gd_esquema].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO,TOTAL_COMPRA,TOTAL_DESCUENTO)
+            VALUES ([gd_esquema].obtener_id_tiempo(@fechaCompra),@cuit,[gd_esquema].obtener_codigo_producto(@codigoProductoVar),@precioTotalProd,@cantidad,@totalCompra,@descuentos) --@codigoProductoVar no es codigo de producto, modelar variables?
+          END
+          ELSE
+          BEGIN
+            UPDATE [gd_esquema].BI_HECHOS_COMPRAS 
+            SET CANTIDAD+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd,TOTAL_COMPRA+=@precioTotalProd
+            WHERE ID_FECHA = [gd_esquema].obtener_id_tiempo(@fechaCompra) 
+            AND ID_PROVEEDOR = @cuit AND COD_PROD = [gd_esquema].obtener_codigo_producto(@codigoProductoVar)
+          END
           FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         END
         CLOSE comcp
@@ -292,7 +303,7 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
         WHILE(@@FETCH_STATUS=0)
         BEGIN
           INSERT INTO [gd_esquema].BI_HECHOS_DESCUENTOS (ID_TIPO_DESCUENTO,ID_FECHA,TOTAL_DESCUENTO)
-          VALUES (@idDesc,@idTiempo,@valor) --guardarse ref a que venta pertenece
+          VALUES (@idDesc,@idTiempo,@valor) --guardarse ref a que venta pertenece, para mi van todas las fk de venta en esta tabla
           SET @totalDescuento+=@valor
         END
         --INSERT INTO [gd_esquema].BI_DIM_CANAL_VENTA 
@@ -312,6 +323,13 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
         FETCH NEXT FROM cvenp INTO @cantidad,@precioUnit,@precioTotalProd,@codProdVar
         WHILE(@@FETCH_STATUS = 0)
         BEGIN
+          IF NOT EXISTS (SELECT 1 FROM [gd_esquema].BI_HECHOS_VENTAS 
+          WHERE ID_FECHA= [gd_esquema].obtener_id_tiempo(@fecha) AND CODIGO_PROVINCIA=[gd_esquema].obtener_id_provincia(@idMedioEnvio) 
+          AND ID_RANGO_ETARIO=[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente))
+          AND ID_CANAL_VENTA=@idCanalVenta AND ID_MEDIO_PAGO=@idMedioPago AND ID_CATEGORIA=[gd_esquema].obtener_id_categoria(@codProdVar)
+          AND COD_PROD=[gd_esquema].obtener_codigo_producto(@codProdVar)
+          AND ID_MEDIO_ENVIO=@idMedioEnvio)
+          BEGIN
           INSERT INTO [gd_esquema].BI_HECHOS_VENTAS 
           (ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
           ,COD_PROD,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
@@ -319,11 +337,22 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
           VALUES ([gd_esquema].obtener_id_tiempo(@fecha),[gd_esquema].obtener_id_provincia(@idMedioEnvio),[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
           @idCanalVenta,@idMedioPago,[gd_esquema].obtener_id_categoria(@codProdVar),[gd_esquema].obtener_codigo_producto(@codProdVar),@idMedioEnvio,NULL,@totalVenta,
           @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@precioTotalProd)
+          END --descuento TODO leer arriba
+          ELSE
+          BEGIN
+            UPDATE [gd_esquema].BI_HECHOS_VENTAS
+            SET TOTAL_VENTA+=@precioTotalProd, CANTIDAD+=@cantidad, TOTAL_PRODUCTO+=@precioTotalProd
+            WHERE ID_FECHA= [gd_esquema].obtener_id_tiempo(@fecha) AND CODIGO_PROVINCIA=[gd_esquema].obtener_id_provincia(@idMedioEnvio) 
+            AND ID_RANGO_ETARIO=[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente))
+            AND ID_CANAL_VENTA=@idCanalVenta AND ID_MEDIO_PAGO=@idMedioPago AND ID_CATEGORIA=[gd_esquema].obtener_id_categoria(@codProdVar)
+            AND COD_PROD=[gd_esquema].obtener_codigo_producto(@codProdVar)
+            AND ID_MEDIO_ENVIO=@idMedioEnvio
+          END
           FETCH NEXT FROM cvenp INTO @cantidad,@precioUnit,@precioTotalProd,@codProdVar
+
         END
         CLOSE cvenp
         DEALLOCATE cvenp
-
         
       END 
       CLOSE cven
