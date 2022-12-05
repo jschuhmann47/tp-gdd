@@ -156,7 +156,7 @@ GO
 
 CREATE PROCEDURE [gd_esquema].cargar_tiempo AS
     BEGIN
-        INSERT INTO [gd_esquema].BI_DIM_TIEMPO (MES, ANIO)
+        INSERT INTO [gd_esquema].BI_DIM_TIEMPO (ANIO, MES)
             SELECT DISTINCT YEAR(FECHA_COMPRA), MONTH(FECHA_COMPRA)
                 FROM [gd_esquema].COMPRA
             UNION
@@ -248,11 +248,12 @@ CREATE PROCEDURE [gd_esquema].cargar_compras AS
 
         DECLARE @cantidad decimal(19,0),@precioUnit decimal(18,2),@precioTotalProd decimal(18,2),@codigoProductoVar nvarchar(50)
         DECLARE comcp CURSOR FOR SELECT CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_PRODUCTO_VARIANTE FROM [gd_esquema].COMPRA_PRODUCTO WHERE COD_COMPRA=@codCompra
-        FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
+        OPEN comcp
+		FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         WHILE(@@FETCH_STATUS = 0)
         BEGIN
           INSERT INTO [gd_esquema].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO,TOTAL_COMPRA,TOTAL_DESCUENTO)
-          VALUES ([gd_esquema].obtener_id_tiempo(@fechaCompra),@cuit,@codigoProductoVar,@precioTotalProd,@cantidad,@totalCompra,@descuentos)
+          VALUES ([gd_esquema].obtener_id_tiempo(@fechaCompra),@cuit,@codigoProductoVar,@precioTotalProd,@cantidad,@totalCompra,@descuentos) --@codigoProductoVar no es codigo de producto, modelar variables?
           FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         END
         CLOSE comcp
