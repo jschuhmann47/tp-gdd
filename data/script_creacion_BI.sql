@@ -262,7 +262,7 @@ CREATE PROCEDURE [gd_esquema].cargar_compras AS
           ELSE
           BEGIN
             UPDATE [gd_esquema].BI_HECHOS_COMPRAS 
-            SET CANTIDAD+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd,TOTAL_COMPRA+=@precioTotalProd
+            SET CANTIDAD_PRODUCTO+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd,TOTAL_COMPRA+=@precioTotalProd
             WHERE ID_FECHA = [gd_esquema].obtener_id_tiempo(@fechaCompra) 
             AND ID_PROVEEDOR = @cuit AND COD_PROD = [gd_esquema].obtener_codigo_producto(@codigoProductoVar)
           END
@@ -341,7 +341,7 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
           ELSE
           BEGIN
             UPDATE [gd_esquema].BI_HECHOS_VENTAS
-            SET TOTAL_VENTA+=@precioTotalProd, CANTIDAD+=@cantidad, TOTAL_PRODUCTO+=@precioTotalProd
+            SET TOTAL_VENTA+=@precioTotalProd, CANTIDAD_PRODUCTO+=@cantidad, TOTAL_PRODUCTO+=@precioTotalProd
             WHERE ID_FECHA= [gd_esquema].obtener_id_tiempo(@fecha) AND CODIGO_PROVINCIA=[gd_esquema].obtener_id_provincia(@idMedioEnvio) 
             AND ID_RANGO_ETARIO=[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente))
             AND ID_CANAL_VENTA=@idCanalVenta AND ID_MEDIO_PAGO=@idMedioPago AND ID_CATEGORIA=[gd_esquema].obtener_id_categoria(@codProdVar)
