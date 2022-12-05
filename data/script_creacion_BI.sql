@@ -250,7 +250,7 @@ CREATE PROCEDURE [gd_esquema].cargar_compras AS
         DECLARE @cantidad decimal(19,0),@precioUnit decimal(18,2),@precioTotalProd decimal(18,2),@codigoProductoVar nvarchar(50)
         DECLARE comcp CURSOR FOR SELECT CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_PRODUCTO_VARIANTE FROM [gd_esquema].COMPRA_PRODUCTO WHERE COD_COMPRA=@codCompra
         OPEN comcp
-		FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
+		    FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         WHILE(@@FETCH_STATUS = 0)
         BEGIN --si no existe el producto ponerlo y sino sumarle al total prod
           IF NOT EXISTS (SELECT 1 FROM [gd_esquema].BI_HECHOS_COMPRAS WHERE ID_FECHA = [gd_esquema].obtener_id_tiempo(@fechaCompra) 
@@ -305,6 +305,7 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
           INSERT INTO [gd_esquema].BI_HECHOS_DESCUENTOS (ID_TIPO_DESCUENTO,ID_FECHA,TOTAL_DESCUENTO)
           VALUES (@idDesc,@idTiempo,@valor) --guardarse ref a que venta pertenece, para mi van todas las fk de venta en esta tabla
           SET @totalDescuento+=@valor
+          FETCH NEXT FROM cccc INTO @idDesc,@idTiempo,@valor
         END
         --INSERT INTO [gd_esquema].BI_DIM_CANAL_VENTA 
         --(ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
@@ -330,13 +331,13 @@ CREATE PROCEDURE [gd_esquema].cargar_ventas AS
           AND COD_PROD=[gd_esquema].obtener_codigo_producto(@codProdVar)
           AND ID_MEDIO_ENVIO=@idMedioEnvio)
           BEGIN
-          INSERT INTO [gd_esquema].BI_HECHOS_VENTAS 
-          (ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
-          ,COD_PROD,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
-          MEDIO_ENVIO_COSTO,MEDIO_PAGO_COSTO,CANAL_VENTA_COSTO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
-          VALUES ([gd_esquema].obtener_id_tiempo(@fecha),[gd_esquema].obtener_id_provincia(@idMedioEnvio),[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
-          @idCanalVenta,@idMedioPago,[gd_esquema].obtener_id_categoria(@codProdVar),[gd_esquema].obtener_codigo_producto(@codProdVar),@idMedioEnvio,NULL,@totalVenta,
-          @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@precioTotalProd)
+            INSERT INTO [gd_esquema].BI_HECHOS_VENTAS 
+            (ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
+            ,COD_PROD,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
+            MEDIO_ENVIO_COSTO,MEDIO_PAGO_COSTO,CANAL_VENTA_COSTO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
+            VALUES ([gd_esquema].obtener_id_tiempo(@fecha),[gd_esquema].obtener_id_provincia(@idMedioEnvio),[gd_esquema].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
+            @idCanalVenta,@idMedioPago,[gd_esquema].obtener_id_categoria(@codProdVar),[gd_esquema].obtener_codigo_producto(@codProdVar),@idMedioEnvio,NULL,@totalVenta,
+            @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@precioTotalProd)
           END --descuento TODO leer arriba
           ELSE
           BEGIN
