@@ -87,12 +87,41 @@ CREATE TABLE [PANINI_GDD].[BI_HECHOS_COMPRAS](
     [ID_PROVEEDOR] nvarchar(50), --fk
     [COD_PROD] nvarchar(50), --fk
     [TOTAL_PRODUCTO] decimal(18,2),
-    [CANTIDAD_PRODUCTO] decimal(19,0),
-    [TOTAL_COMPRA] decimal(18,2), --NETO
-    [TOTAL_DESCUENTO] decimal(18,2),
+    [CANTIDAD_PRODUCTO] decimal(19,0)
+
+
+    --      [TOTAL_COMPRA] decimal(18,2), --NETO
+    --      [TOTAL_DESCUENTO] decimal(18,2),
+
 	PRIMARY KEY ([ID_FECHA],[ID_PROVEEDOR],[COD_PROD])
 );
 GO
+
+CREATE TABLE [PANINI_GDD].[BI_HECHOS_ENVIO](
+  [ID_FECHA] decimal(19,0), --fk
+  [CODIGO_PROVINCIA] decimal(19,0), --fk
+  [ID_MEDIO_ENVIO] decimal(19,0),
+  [MEDIO_ENVIO_COSTO] decimal(18,2)
+  PRIMARY KEY ([ID_FECHA],[CODIGO_PROVINCIA],[ID_MEDIO_ENVIO],[MEDIO_ENVIO_COSTO] )
+);
+
+CREATE TABLE [PANINI_GDD].[BI_HECHOS_CANAL_VENTA](
+ [ID_CANAL_VENTA] decimal(19,0), --fk
+ [ID_FECHA] decimal(19,0), --fk
+ [CODIGO_PROVINCIA] decimal(19,0), --fk
+ [CANAL_VENTA_COSTO] decimal(18,2),
+ PRIMARY KEY ([ID_CANAL_VENTA],[ID_FECHA],[CODIGO_PROVINCIA],[CANAL_VENTA_COSTO] )
+);
+
+
+CREATE TABLE [PANINI_GDD].[BI_HECHOS_MEDIO_PAGO](
+ [ID_MEDIO_PAGO] decimal(19,0), --fk
+ [ID_FECHA] decimal(19,0), --fk
+ [CODIGO_PROVINCIA] decimal(19,0), --fk
+ [MEDIO_PAGO_COSTO] decimal(18,2),
+ PRIMARY KEY ([ID_MEDIO_PAGO],[ID_FECHA],[CODIGO_PROVINCIA],[MEDIO_PAGO_COSTO] )
+);
+
 
 CREATE TABLE [PANINI_GDD].[BI_HECHOS_VENTAS](
     [ID_FECHA] decimal(19,0), --fk
@@ -103,15 +132,19 @@ CREATE TABLE [PANINI_GDD].[BI_HECHOS_VENTAS](
     [ID_CATEGORIA] decimal(19,0), --fk
     [COD_PROD] nvarchar(50), --fk
     [ID_MEDIO_ENVIO] decimal(19,0), --fk
-    [DESCUENTO_ID] decimal(19,0), --fk
-    [TOTAL_VENTA] decimal(18,2), --NETO
-    [TOTAL_DESCUENTOS] decimal(18,2),
-    [MEDIO_ENVIO_COSTO] decimal(18,2),
-    [MEDIO_PAGO_COSTO] decimal(18,2),
-    [CANAL_VENTA_COSTO] decimal(18,2),
+    -- [DESCUENTO_ID] decimal(19,0), --fk
     [CANTIDAD_PRODUCTO] decimal(19,0),
-    [TOTAL_PRODUCTO] decimal(18,2),
-	PRIMARY KEY ([ID_FECHA],[CODIGO_PROVINCIA],[ID_RANGO_ETARIO], [ID_CANAL_VENTA],[ID_MEDIO_PAGO],[ID_CATEGORIA], [COD_PROD],[ID_MEDIO_ENVIO],[DESCUENTO_ID])
+    [TOTAL_PRODUCTO] decimal(18,2) --el precio unitario
+
+    --       [TOTAL_VENTA] decimal(18,2), --NETO
+
+    --       [TOTAL_DESCUENTOS] decimal(18,2),
+    --       [MEDIO_ENVIO_COSTO] decimal(18,2),
+    --       [MEDIO_PAGO_COSTO] decimal(18,2),
+    --       [CANAL_VENTA_COSTO] decimal(18,2),
+
+
+	PRIMARY KEY ([ID_FECHA],[CODIGO_PROVINCIA],[ID_RANGO_ETARIO], [ID_CANAL_VENTA],[ID_MEDIO_PAGO],[ID_CATEGORIA], [COD_PROD],[ID_MEDIO_ENVIO])
 );
 GO
 
@@ -219,7 +252,7 @@ GO
 CREATE PROCEDURE [PANINI_GDD].cargar_tipos_envio AS
     BEGIN
         INSERT INTO [PANINI_GDD].BI_DIM_TIPO_ENVIO (ID_MEDIO_ENVIO,MEDIO) 
-        SELECT DISTINCT ID_MEDIO_ENVIO,MEDIO FROM [PANINI_GDD].[MEDIO_ENVIO_X_CODIGO_POSTAL] --hay q agregar cod postal? sino se repiten
+        SELECT DISTINCT ID_MEDIO_ENVIO,MEDIO FROM [PANINI_GDD].[MEDIO_ENVIO_X_CODIGO_POSTAL]
     END
 GO
 
@@ -236,16 +269,16 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
     BEGIN
       DECLARE @fechaCompra DATE, @medioPagoId decimal(19,0),@totalCompra decimal(18,2),@cuit nvarchar(50), @codCompra decimal(19,0)
       DECLARE comc CURSOR FOR 
-	  SELECT FECHA_COMPRA,ID_MEDIO_PAGO,TOTAL_COMPRA,CUIT_PROV,COD_COMPRA FROM [PANINI_GDD].COMPRA
+	    SELECT FECHA_COMPRA,ID_MEDIO_PAGO,CUIT_PROV,COD_COMPRA FROM [PANINI_GDD].COMPRA
       OPEN comc
-      FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@totalCompra,@cuit,@codCompra
+      FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@cuit,@codCompra --,@totalCompra
       WHILE(@@FETCH_STATUS = 0)
       BEGIN
-        DECLARE @descuentos decimal(18,2)
-        SET @descuentos = (SELECT SUM(MONTO_DESC_COMPRA) FROM [PANINI_GDD].COMPRA c
-        JOIN [PANINI_GDD].DESCUENTO_X_COMPRA dc ON c.COD_COMPRA=dc.COD_COMPRA
-        JOIN [PANINI_GDD].DESCUENTO_COMPRA d ON d.CODIGO_DESC_COMPRA=dc.CODIGO_DESC_COMPRA
-        WHERE c.COD_COMPRA=@codCompra)
+        -- DECLARE @descuentos decimal(18,2)
+        -- SET @descuentos = (SELECT SUM(MONTO_DESC_COMPRA) FROM [PANINI_GDD].COMPRA c
+        -- JOIN [PANINI_GDD].DESCUENTO_X_COMPRA dc ON c.COD_COMPRA=dc.COD_COMPRA
+        -- JOIN [PANINI_GDD].DESCUENTO_COMPRA d ON d.CODIGO_DESC_COMPRA=dc.CODIGO_DESC_COMPRA
+        -- WHERE c.COD_COMPRA=@codCompra)
 
         DECLARE @cantidad decimal(19,0),@precioUnit decimal(18,2),@precioTotalProd decimal(18,2),@codigoProductoVar nvarchar(50)
         DECLARE comcp CURSOR FOR SELECT CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_PRODUCTO_VARIANTE FROM [PANINI_GDD].COMPRA_PRODUCTO WHERE COD_COMPRA=@codCompra
@@ -256,13 +289,14 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
           IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_COMPRAS WHERE ID_FECHA = [PANINI_GDD].obtener_id_tiempo(@fechaCompra) 
           AND ID_PROVEEDOR = @cuit AND COD_PROD = [PANINI_GDD].obtener_codigo_producto(@codigoProductoVar))
           BEGIN
-            INSERT INTO [PANINI_GDD].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO,TOTAL_COMPRA,TOTAL_DESCUENTO)
-            VALUES ([PANINI_GDD].obtener_id_tiempo(@fechaCompra),@cuit,[PANINI_GDD].obtener_codigo_producto(@codigoProductoVar),@precioTotalProd,@cantidad,@totalCompra,@descuentos) --@codigoProductoVar no es codigo de producto, modelar variables?
+            INSERT INTO [PANINI_GDD].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO) --,TOTAL_COMPRA,TOTAL_DESCUENTO)
+            VALUES ([PANINI_GDD].obtener_id_tiempo(@fechaCompra),@cuit,[PANINI_GDD].obtener_codigo_producto(@codigoProductoVar),
+            @precioTotalProd,@cantidad) --,@totalCompra,@descuentos)
           END
           ELSE
           BEGIN
             UPDATE [PANINI_GDD].BI_HECHOS_COMPRAS 
-            SET CANTIDAD_PRODUCTO+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd,TOTAL_COMPRA+=@precioTotalProd
+            SET CANTIDAD_PRODUCTO+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd --,TOTAL_COMPRA+=@precioTotalProd
             WHERE ID_FECHA = [PANINI_GDD].obtener_id_tiempo(@fechaCompra) 
             AND ID_PROVEEDOR = @cuit AND COD_PROD = [PANINI_GDD].obtener_codigo_producto(@codigoProductoVar)
           END
@@ -270,24 +304,33 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
         END
         CLOSE comcp
         DEALLOCATE comcp
-        FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@totalCompra,@cuit,@codCompra
+        FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@cuit,@codCompra --,@totalCompra
       END
       CLOSE comc
       DEALLOCATE comc
     END
 GO
 
+-- las q sacamos de venta:
+--       [TOTAL_VENTA] decimal(18,2), --NETO
+
+--       [TOTAL_DESCUENTOS] decimal(18,2),
+--       [MEDIO_ENVIO_COSTO] decimal(18,2),
+--       [MEDIO_PAGO_COSTO] decimal(18,2),
+--       [CANAL_VENTA_COSTO] decimal(18,2),
+
+
 
 CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
     BEGIN
       DECLARE @codVenta decimal(19,0),@fecha DATE,@idCliente decimal(19,0),@idCanalVenta decimal(19,0),@idMedioEnvio decimal(19,0),
-      @idMedioPago decimal(19,0),@totalVenta decimal(18,2),@precioEnvio decimal(18,2),@canalCosto decimal(18,2),@costoTransaccion decimal(18,2)
+      @idMedioPago decimal(19,0),@precioEnvio decimal(18,2),@canalCosto decimal(18,2),@costoTransaccion decimal(18,2)
       DECLARE cven CURSOR FOR
-      SELECT COD_VENTA,FECHA_VENTA,ID_CLIENTE,ID_CANAL_VENTA,ID_MEDIO_ENVIO,ID_MEDIO_PAGO,TOTAL_VENTA,PRECIO_ENVIO,CANAL_COSTO,COSTO_TRANSACCION
+      SELECT COD_VENTA,FECHA_VENTA,ID_CLIENTE,ID_CANAL_VENTA,ID_MEDIO_ENVIO,ID_MEDIO_PAGO,PRECIO_ENVIO,CANAL_COSTO,COSTO_TRANSACCION
       FROM [PANINI_GDD].VENTA
       OPEN cven
       FETCH NEXT FROM cven INTO @codVenta,@fecha,@idCliente,@idCanalVenta,@idMedioEnvio,
-      @idMedioPago ,@totalVenta ,@precioEnvio ,@canalCosto ,@costoTransaccion 
+      @idMedioPago ,@precioEnvio ,@canalCosto ,@costoTransaccion 
       WHILE(@@FETCH_STATUS = 0)
       BEGIN
         DECLARE @idDesc decimal(19,0),@idTiempo decimal(19,0),@valor decimal(18,2),@totalDescuento decimal(18,2)
@@ -307,13 +350,7 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
           SET @totalDescuento+=@valor
           FETCH NEXT FROM cccc INTO @idDesc,@idTiempo,@valor
         END
-        --INSERT INTO [PANINI_GDD].BI_DIM_CANAL_VENTA 
-        --(ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
-        --,COD_PROD,ID_DESC,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
-        --MEDIO_ENVIO_COSTO,MEDIO_PAGO_COSTO,CANAL_VENTA_COSTO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
-        --VALUES([PANINI_GDD].obtener_id_tiempo(@fecha),[PANINI_GDD].obtener_id_provincia(@codVenta),[PANINI_GDD].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
-        --@idCanalVenta,@idMedioPago,NULL,NULL,@idDesc,@totalVenta,
-        --@totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@totalProd)
+   
         CLOSE cccc
         DEALLOCATE cccc
 
@@ -333,16 +370,17 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
           BEGIN
             INSERT INTO [PANINI_GDD].BI_HECHOS_VENTAS 
             (ID_FECHA,CODIGO_PROVINCIA,ID_RANGO_ETARIO,ID_CANAL_VENTA,ID_MEDIO_PAGO,ID_CATEGORIA
-            ,COD_PROD,ID_MEDIO_ENVIO,DESCUENTO_ID,TOTAL_VENTA,TOTAL_DESCUENTOS,
-            MEDIO_ENVIO_COSTO,MEDIO_PAGO_COSTO,CANAL_VENTA_COSTO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
-            VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),[PANINI_GDD].obtener_id_provincia(@idMedioEnvio),[PANINI_GDD].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
-            @idCanalVenta,@idMedioPago,[PANINI_GDD].obtener_id_categoria(@codProdVar),[PANINI_GDD].obtener_codigo_producto(@codProdVar),@idMedioEnvio,NULL,@totalVenta,
-            @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,@cantidad,@precioTotalProd)
+            ,COD_PROD,ID_MEDIO_ENVIO,CANTIDAD_PRODUCTO,TOTAL_PRODUCTO)
+            VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),[PANINI_GDD].obtener_id_provincia(@idMedioEnvio),
+            [PANINI_GDD].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
+            @idCanalVenta,@idMedioPago,[PANINI_GDD].obtener_id_categoria(@codProdVar),[PANINI_GDD].obtener_codigo_producto(@codProdVar),
+            @idMedioEnvio,@cantidad,@precioTotalProd)
+            --@totalVenta, @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,
           END --descuento TODO leer arriba
           ELSE
           BEGIN
             UPDATE [PANINI_GDD].BI_HECHOS_VENTAS
-            SET TOTAL_VENTA+=@precioTotalProd, CANTIDAD_PRODUCTO+=@cantidad, TOTAL_PRODUCTO+=@precioTotalProd
+            SET CANTIDAD_PRODUCTO+=@cantidad, TOTAL_PRODUCTO+=@precioTotalProd
             WHERE ID_FECHA= [PANINI_GDD].obtener_id_tiempo(@fecha) AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) 
             AND ID_RANGO_ETARIO=[PANINI_GDD].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente))
             AND ID_CANAL_VENTA=@idCanalVenta AND ID_MEDIO_PAGO=@idMedioPago AND ID_CATEGORIA=[PANINI_GDD].obtener_id_categoria(@codProdVar)
@@ -354,7 +392,28 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
         END
         CLOSE cvenp
         DEALLOCATE cvenp
-        
+
+        IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_ENVIO 
+        WHERE ID_FECHA=[PANINI_GDD].obtener_id_tiempo(@fecha) 
+        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) AND ID_MEDIO_ENVIO=@idMedioEnvio AND MEDIO_ENVIO_COSTO=@precioEnvio)
+        INSERT INTO [PANINI_GDD].BI_HECHOS_ENVIO (ID_FECHA,CODIGO_PROVINCIA,ID_MEDIO_ENVIO,MEDIO_ENVIO_COSTO)
+        VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),
+        [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idMedioEnvio,@precioEnvio)
+
+        IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_CANAL_VENTA WHERE ID_FECHA=[PANINI_GDD].obtener_id_tiempo(@fecha) 
+        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) AND ID_CANAL_VENTA=@idCanalVenta AND CANAL_VENTA_COSTO=@canalCosto)
+        INSERT INTO [PANINI_GDD].BI_HECHOS_CANAL_VENTA (ID_FECHA,CODIGO_PROVINCIA,ID_CANAL_VENTA,CANAL_VENTA_COSTO)
+        VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),
+        [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idCanalVenta,@canalCosto)
+
+        IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_MEDIO_PAGO WHERE ID_FECHA=[PANINI_GDD].obtener_id_tiempo(@fecha) 
+        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) AND ID_MEDIO_PAGO=@idMedioPago AND MEDIO_PAGO_COSTO=@costoTransaccion)
+        INSERT INTO [PANINI_GDD].BI_HECHOS_MEDIO_PAGO (ID_FECHA,CODIGO_PROVINCIA,ID_MEDIO_PAGO,MEDIO_PAGO_COSTO)
+        VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),
+        [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idMedioPago,@costoTransaccion)
+
+        FETCH NEXT FROM cven INTO @codVenta,@fecha,@idCliente,@idCanalVenta,@idMedioEnvio,
+        @idMedioPago ,@precioEnvio ,@canalCosto ,@costoTransaccion 
       END 
       CLOSE cven
       DEALLOCATE cven
@@ -363,7 +422,7 @@ GO
 
 
 
---FUNCIONES
+--FUNCIONES:
 
 CREATE FUNCTION [PANINI_GDD].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMAL(19,0) AS
 	BEGIN
@@ -400,7 +459,7 @@ GO
 CREATE FUNCTION [PANINI_GDD].obtener_rentabilidad_producto(@idProd decimal(19,0)) RETURNS DECIMAL(18,2) AS
   BEGIN
     DECLARE @rentabilidad decimal(19,0)
-    SET @rentabilidad = (SELECT (SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_COMPRA))/SUM(v.TOTAL_PRODUCTO)
+    SET @rentabilidad = (SELECT (SUM(v.TOTAL_PRODUCTO)-SUM(c.CANTIDAD_PRODUCTO * c.TOTAL_PRODUCTO))/SUM(v.TOTAL_PRODUCTO)
     FROM [PANINI_GDD].BI_HECHOS_VENTAS v 
     JOIN [PANINI_GDD].BI_HECHOS_COMPRAS c ON v.COD_PROD=c.COD_PROD
     JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON v.ID_FECHA=t.ID_FECHA
@@ -488,8 +547,8 @@ BEGIN
 	
 	BEGIN TRY
 		BEGIN TRANSACTION
-		exec [PANINI_GDD].cargar_tiempo
-		exec [PANINI_GDD].cargar_rangos_etarios
+	exec [PANINI_GDD].cargar_tiempo
+	exec [PANINI_GDD].cargar_rangos_etarios
     exec [PANINI_GDD].cargar_provincias
     exec [PANINI_GDD].cargar_canales_venta
     exec [PANINI_GDD].cargar_medios_pago
@@ -523,7 +582,10 @@ EXEC [PANINI_GDD].insertar_todo_bi
 GO
 
 
+select * from [PANINI_GDD].[BI_DIM_PRODUCTO]
+
 --VISTAS
+
 
 /*
 Las ganancias mensuales de cada canal de venta.
@@ -531,6 +593,7 @@ Se entiende por ganancias al total de las ventas, menos el total de las
 compras, menos los costos de transacción totales aplicados asociados los
 medios de pagos utilizados en las mismas.
 */
+
 
 CREATE VIEW [PANINI_GDD].ganancias_mensuales_x_canal_venta (CANAL_VENTA, MES, ANIO, TOTAL_VENTAS,TOTAL_COMPRAS, TOTAL_NETO)
 AS
