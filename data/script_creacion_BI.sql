@@ -1,9 +1,6 @@
 USE [GD2C2022]
 GO
 
-USE [dbavanza]
-GO
-
 
 
 CREATE TABLE [PANINI_GDD].[BI_DIM_TIEMPO](
