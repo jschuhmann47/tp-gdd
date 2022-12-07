@@ -2,7 +2,6 @@ USE [GD2C2022]
 GO
 
 
-
 CREATE TABLE [PANINI_GDD].[BI_DIM_TIEMPO](
     [ID_FECHA] decimal(19,0) IDENTITY(1,1),
     [MES] INT,
@@ -122,6 +121,7 @@ CREATE TABLE [PANINI_GDD].[BI_HECHOS_MEDIO_PAGO](
  [ID_FECHA] decimal(19,0), --fk
  [CODIGO_PROVINCIA] decimal(19,0), --fk
  [MEDIO_PAGO_COSTO] decimal(18,2),
+ TOTAL_GANANCIA_MES decimal(18,2),
  PRIMARY KEY ([ID_MEDIO_PAGO],[ID_FECHA],[CODIGO_PROVINCIA],[MEDIO_PAGO_COSTO] )
 );
 
@@ -396,11 +396,12 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
         INSERT INTO [PANINI_GDD].BI_HECHOS_CANAL_VENTA (ID_FECHA,CODIGO_PROVINCIA,ID_CANAL_VENTA,GANANCIA_CANAL_VENTA_MENSUAL)
         VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),
         [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idCanalVenta,[PANINI_GDD].obtener_ganancias_canal_venta(DATEPART(MONTH,@fecha),DATEPART(YEAR,@fecha), @idCanalVenta)) 
+        
         IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_MEDIO_PAGO WHERE ID_FECHA=[PANINI_GDD].obtener_id_tiempo(@fecha) 
-        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) AND ID_MEDIO_PAGO=@idMedioPago AND MEDIO_PAGO_COSTO=@costoTransaccion)
-        INSERT INTO [PANINI_GDD].BI_HECHOS_MEDIO_PAGO (ID_FECHA,CODIGO_PROVINCIA,ID_MEDIO_PAGO,MEDIO_PAGO_COSTO)
+        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) AND ID_MEDIO_PAGO=@idMedioPago)
+        INSERT INTO [PANINI_GDD].BI_HECHOS_MEDIO_PAGO (ID_FECHA,CODIGO_PROVINCIA,ID_MEDIO_PAGO,MEDIO_PAGO_COSTO,TOTAL_GANANCIA_MES)
         VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),
-        [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idMedioPago,@costoTransaccion)
+        [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idMedioPago,@costoTransaccion,[PANINI_GDD].obtener_ganancias_medio_pago(DATEPART(MONTH,@fecha),DATEPART(YEAR,@fecha),@idMedioPago))
 
         FETCH NEXT FROM cven INTO @codVenta,@fecha,@idCliente,@idCanalVenta,@idMedioEnvio,
         @idMedioPago ,@precioEnvio ,@costoTransaccion, @totalVenta 
@@ -430,6 +431,17 @@ CREATE FUNCTION [PANINI_GDD].obtener_id_rango_etario(@fecha DATE) RETURNS DECIMA
 
 		RETURN @edad_id
 	END
+GO
+
+
+CREATE FUNCTION [PANINI_GDD].obtener_ganancias_medio_pago(@mes INT, @anio INT,@idMedioPago decimal(19,0)) RETURNS DECIMAL(18,2) AS
+  BEGIN
+    DECLARE @cant DECIMAL(18,2)
+    SET @cant= (SELECT SUM(v.TOTAL_VENTA) 
+    FROM [PANINI_GDD].VENTA v 
+    WHERE DATEPART(YEAR,v.FECHA_VENTA)=@anio AND DATEPART(MONTH,v.FECHA_VENTA)=@mes AND v.ID_MEDIO_PAGO=@idMedioPago)   
+    RETURN @cant
+  END
 GO
 
 CREATE FUNCTION [PANINI_GDD].obtener_id_tiempo(@fecha DATE) RETURNS DECIMAL(19,0) AS
@@ -506,9 +518,9 @@ CREATE FUNCTION [PANINI_GDD].obtener_cant_ventas_x_mes_y_anio(@mes INT, @anio IN
   END
 GO
 
-CREATE FUNCTION [PANINI_GDD].obtener_ganancias_canal_venta(@mes INT, @anio INT,@idCanalVenta decimal(19,0)) RETURNS DECIMAL(19,0) AS
+CREATE FUNCTION [PANINI_GDD].obtener_ganancias_canal_venta(@mes INT, @anio INT,@idCanalVenta decimal(19,0)) RETURNS DECIMAL(18,2) AS
   BEGIN
-    DECLARE @cant DECIMAL(19,0)
+    DECLARE @cant DECIMAL(18,2)
     SET @cant= (SELECT SUM(v.TOTAL_VENTA) 
     FROM [PANINI_GDD].VENTA v 
     WHERE DATEPART(YEAR,v.FECHA_VENTA)=@anio AND DATEPART(MONTH,v.FECHA_VENTA)=@mes AND v.ID_CANAL_VENTA=@idCanalVenta)   
@@ -654,6 +666,8 @@ AS
 
 GO
 
+SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5
+
 --    ANDA PERO DA CUALQUIER COSAA
 
 
@@ -662,19 +676,17 @@ GO
 -- por medio de pago (en caso que aplique) y descuentos por medio de pago
 -- (en caso que aplique)
 
+
 CREATE VIEW [PANINI_GDD].total_ingresos_medio_pago_x_mes (MEDIO_PAGO,MES,ANIO,TOTAL_INGRESOS)
 AS
-  
-    SELECT 
-	  mp.MEDIO_PAGO,
+ SELECT 
+	p.MEDIO_PAGO,
     MES,
     ANIO,
-    SUM(TOTAL_PRODUCTO) - SUM(MEDIO_PAGO_COSTO) - SUM(TOTAL_DESCUENTOS) --ventas repetidas no se si afectan o no
-    FROM [PANINI_GDD].BI_HECHOS_VENTAS v
-    JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON t.ID_FECHA = v.ID_FECHA
-	  JOIN [PANINI_GDD].BI_DIM_MEDIO_PAGO mp ON mp.ID_MEDIO_PAGO=v.ID_MEDIO_PAGO
-    GROUP BY MEDIO_PAGO,MES,ANIO
-  
+    mp.TOTAL_GANANCIA_MES
+    FROM [PANINI_GDD].BI_HECHOS_MEDIO_PAGO mp
+    JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON ( t.ID_FECHA = mp.ID_FECHA)
+	JOIN [PANINI_GDD].BI_DIM_MEDIO_PAGO p ON ( p.ID_MEDIO_PAGO = mp.ID_MEDIO_PAGO ) 
 GO
 -- ESTA HAY QUE CALCULAR EN EL PROCEDURE D ELA MIGRACION Total de Ingresos por cada medio de pago por mes Y HACER DIRECTO UN SELECT
 
@@ -702,25 +714,26 @@ GO
 -- debe representar la cantidad de envíos realizados a cada provincia sobre
 -- total de envío mensuales.
 
+drop view [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes
+
+
 CREATE VIEW [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes(PROVINCIA, PORCENTAJE, MES, ANIO)
 AS
-  
 
     SELECT p.NOMBRE_PROV,
 
     [PANINI_GDD].obtener_cant_ventas_x_provincia(p.CODIGO_PROVINCIA) / [PANINI_GDD].obtener_cant_ventas_x_mes_y_anio(f.MES, f.ANIO)
-
     PORCENTAJE,
+	f.MES,
+	f.ANIO
 
-    f.MES,
-    f.ANIO
-    FROM [PANINI_GDD].BI_DIM_PROVINCIA p
-    JOIN [PANINI_GDD].BI_HECHOS_VENTAS v ON ( v.CODIGO_PROVINCIA = p.CODIGO_PROVINCIA )
-    JOIN [PANINI_GDD].[BI_DIM_TIEMPO] f ON ( v.ID_FECHA = f.ID_FECHA)
+    FROM [PANINI_GDD].[BI_HECHOS_ENVIO] he
+	JOIN [PANINI_GDD].BI_DIM_PROVINCIA p ON ( p.CODIGO_PROVINCIA = he.CODIGO_PROVINCIA )
+    JOIN [PANINI_GDD].[BI_DIM_TIEMPO] f ON ( he.ID_FECHA = f.ID_FECHA)
+	GROUP BY f.MES,f.ANIO,p.CODIGO_PROVINCIA,p.NOMBRE_PROV
 GO 
 
-
--- ESTA ATRAPADA EN UNA ITEREACION 
+-- ANDA BIEN HAY QUE VER QUE ONDA LOS RESULTADOS
 
 
 -- Valor promedio de envío por Provincia por Medio De Envío anual.
@@ -736,6 +749,7 @@ AS
 	JOIN [PANINI_GDD].BI_DIM_PROVINCIA p ON p.CODIGO_PROVINCIA=v.CODIGO_PROVINCIA
     GROUP BY t.ANIO, e.MEDIO, p.NOMBRE_PROV
 GO
+
 
 --   ANDA BIEN HAY QUE VER SI ES VERIDICO EL VALOR PROMEDIO
 
