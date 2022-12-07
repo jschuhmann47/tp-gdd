@@ -2,6 +2,7 @@ USE [GD2C2022]
 GO
 
 
+
 CREATE TABLE [PANINI_GDD].[BI_DIM_TIEMPO](
     [ID_FECHA] decimal(19,0) IDENTITY(1,1),
     [MES] INT,
@@ -232,10 +233,12 @@ CREATE PROCEDURE [PANINI_GDD].cargar_canales_venta AS
 GO
 
 
+
 CREATE PROCEDURE [PANINI_GDD].cargar_medios_pago AS
     BEGIN
-        INSERT INTO [PANINI_GDD].BI_DIM_MEDIO_PAGO (MEDIO_PAGO) 
-        SELECT DISTINCT MEDIO_PAGO FROM [PANINI_GDD].[MEDIO_DE_PAGO] --distinct?
+        INSERT INTO [PANINI_GDD].BI_DIM_MEDIO_PAGO (ID_MEDIO_PAGO,MEDIO_PAGO) 
+		
+        SELECT DISTINCT ID_MEDIO_PAGO, MEDIO_PAGO FROM [PANINI_GDD].[MEDIO_DE_PAGO] --distinct?
     END
 GO
 
@@ -681,7 +684,6 @@ AS
 
 GO
 
-SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5
 
 --    ANDA PERO DA CUALQUIER COSAA
 
@@ -729,7 +731,7 @@ GO
 -- debe representar la cantidad de envíos realizados a cada provincia sobre
 -- total de envío mensuales.
 
-drop view [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes
+
 
 
 CREATE VIEW [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes(PROVINCIA, PORCENTAJE, MES, ANIO)
@@ -810,11 +812,11 @@ SELECT * FROM [PANINI_GDD].ganancias_mensuales_x_canal_venta
 
 SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad
 
-SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5
+SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 --chekear que de verdad no existan todos los rangos etarios
 
 SELECT * FROM [PANINI_GDD].total_ingresos_medio_pago_x_mes
 
-select * FROM [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes
+SELECT * FROM [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes
 
 SELECT * FROM [PANINI_GDD].importe_total_segun_descuento
 
