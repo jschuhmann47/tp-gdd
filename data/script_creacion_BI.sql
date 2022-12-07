@@ -331,6 +331,7 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
 GO
 
 
+DROP PROCEDURE [PANINI_GDD].cargar_ventas
 
 CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
     BEGIN
@@ -355,9 +356,15 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
         OPEN cccc
         FETCH NEXT FROM cccc INTO @idDesc,@idTiempo,@valor
         WHILE(@@FETCH_STATUS=0)
-        BEGIN
+		BEGIN
+          IF NOT EXISTS(SELECT 1 FROM [PANINI_GDD].BI_HECHOS_DESCUENTOS WHERE ID_TIPO_DESCUENTO=@idDesc AND ID_FECHA=@idTiempo AND ID_CANAL_VENTA=@idCanalVenta)
           INSERT INTO [PANINI_GDD].BI_HECHOS_DESCUENTOS (ID_TIPO_DESCUENTO,ID_FECHA,TOTAL_DESCUENTO,ID_CANAL_VENTA)
-          VALUES (@idDesc,@idTiempo,@valor,@idCanalVenta) --guardarse ref a que venta pertenece, para mi van todas las fk de venta en esta tabla
+          VALUES (@idDesc,@idTiempo,@valor,@idCanalVenta)
+          ELSE 
+          UPDATE [PANINI_GDD].BI_HECHOS_DESCUENTOS
+          SET TOTAL_DESCUENTO+=@valor
+          WHERE ID_TIPO_DESCUENTO=@idDesc AND ID_FECHA=@idTiempo AND ID_CANAL_VENTA=@idCanalVenta
+ 
           SET @totalDescuento+=@valor
           FETCH NEXT FROM cccc INTO @idDesc,@idTiempo,@valor
         END
@@ -641,7 +648,6 @@ GO
 
 --     ANDA BIEN
 
--- SELECT  [GANANCIA_CANAL_VENTA_MENSUAL] decimal(18,2)   FROM HECHO CANAL VENTA
 
 -- Los 5 productos con mayor rentabilidad anual, con sus respectivos %
 -- Se entiende por rentabilidad a los ingresos generados por el producto
@@ -660,13 +666,9 @@ AS
   
 GO
 
---     ANDA BIEN PERO HAY QUE CHEKEAR EL 0,02 QUE ES EL PORCENTAJE Y ADEMAS VER Q ONDA EL WHERE EN LA SELECCION
-
-
 
 -- Las 5 categorías de productos más vendidos por rango etario de clientes
 -- por mes.
-
 
 
 --Existen solo Tres CATEGORIAS por eso el ranking da solo 3.
@@ -688,10 +690,6 @@ AS
 GO
 
 
---    ANDA PERO DA CUALQUIER COSAA
-
-
-
 -- Total de Ingresos por cada medio de pago por mes, descontando los costos
 -- por medio de pago (en caso que aplique) y descuentos por medio de pago
 -- (en caso que aplique)
@@ -708,7 +706,6 @@ AS
     JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON ( t.ID_FECHA = mp.ID_FECHA)
 	JOIN [PANINI_GDD].BI_DIM_MEDIO_PAGO p ON ( p.ID_MEDIO_PAGO = mp.ID_MEDIO_PAGO ) 
 GO
--- ESTA HAY QUE CALCULAR EN EL PROCEDURE D ELA MIGRACION Total de Ingresos por cada medio de pago por mes Y HACER DIRECTO UN SELECT
 
 -- Importe total en descuentos aplicados según su tipo de descuento, por
 -- canal de venta, por mes. Se entiende por tipo de descuento como los
@@ -722,21 +719,17 @@ AS
     FROM [PANINI_GDD].[BI_HECHOS_DESCUENTOS] descuento
     JOIN [PANINI_GDD].[BI_DIM_TIPO_DESCUENTO] tipo ON (descuento.ID_TIPO_DESCUENTO = tipo.ID_TIPO_DESCUENTO)
 
-    JOIN [PANINI_GDD].[BI_HECHOS_VENTAS] venta ON (venta.DESCUENTO_ID = descuento.DESCUENTO_ID)
-    JOIN [PANINI_GDD].[BI_DIM_CANAL_VENTA] canal_venta ON (venta.ID_CANAL_VENTA = canal_venta.ID_CANAL_VENTA)
+    JOIN [PANINI_GDD].[BI_DIM_CANAL_VENTA] canal_venta ON (descuento.ID_CANAL_VENTA = canal_venta.ID_CANAL_VENTA)
     JOIN [PANINI_GDD].[BI_DIM_TIEMPO] fecha ON (fecha.ID_FECHA = descuento.ID_FECHA)
 
     GROUP BY tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES
 GO  
-
--- ESTA HAY QUE HACERLA DE NUEVO
 
 
 
 -- Porcentaje de envíos realizados a cada Provincia por mes. El porcentaje
 -- debe representar la cantidad de envíos realizados a cada provincia sobre
 -- total de envío mensuales.
-
 
 
 
@@ -756,8 +749,6 @@ AS
 	GROUP BY f.MES,f.ANIO,p.CODIGO_PROVINCIA,p.NOMBRE_PROV
 GO 
 
--- ANDA BIEN HAY QUE VER QUE ONDA LOS RESULTADOS
-
 
 -- Valor promedio de envío por Provincia por Medio De Envío anual.
 
@@ -774,7 +765,6 @@ AS
 GO
 
 
---   ANDA BIEN HAY QUE VER SI ES VERIDICO EL VALOR PROMEDIO
 
 -- Aumento promedio de precios de cada proveedor anual. Para calcular este
 -- indicador se debe tomar como referencia el máximo precio por año menos
@@ -818,7 +808,7 @@ SELECT * FROM [PANINI_GDD].ganancias_mensuales_x_canal_venta
 
 SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad
 
-SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 --chekear que de verdad no existan todos los rangos etarios
+SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 
 
 SELECT * FROM [PANINI_GDD].total_ingresos_medio_pago_x_mes
 
