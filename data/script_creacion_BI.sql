@@ -1,8 +1,6 @@
 USE [GD2C2022]
 GO
 
-
-
 CREATE TABLE [PANINI_GDD].[BI_DIM_TIEMPO](
     [ID_FECHA] decimal(19,0) IDENTITY(1,1),
     [MES] INT,
@@ -89,10 +87,6 @@ CREATE TABLE [PANINI_GDD].[BI_HECHOS_COMPRAS](
     [COD_PROD] nvarchar(50), --fk
     [TOTAL_PRODUCTO] decimal(18,2),
     [CANTIDAD_PRODUCTO] decimal(19,0),
-    
-
-    --      [TOTAL_COMPRA] decimal(18,2), --NETO
-    --      [TOTAL_DESCUENTO] decimal(18,2),
 
 	PRIMARY KEY ([ID_FECHA],[ID_PROVEEDOR],[COD_PROD])
 );
@@ -110,9 +104,8 @@ CREATE TABLE [PANINI_GDD].[BI_HECHOS_ENVIO](
 CREATE TABLE [PANINI_GDD].[BI_HECHOS_CANAL_VENTA](
  [ID_CANAL_VENTA] decimal(19,0), --fk
  [ID_FECHA] decimal(19,0), --fk
- [CODIGO_PROVINCIA] decimal(19,0), --fk
- -- [CANAL_VENTA_COSTO] decimal(18,2),                                                                  
- [GANANCIA_CANAL_VENTA_MENSUAL] decimal(18,2),        -- NUEVO
+ [CODIGO_PROVINCIA] decimal(19,0), --fk                                                               
+ [GANANCIA_CANAL_VENTA_MENSUAL] decimal(18,2),
 
  PRIMARY KEY ([ID_CANAL_VENTA],[ID_FECHA],[CODIGO_PROVINCIA])
 );
@@ -143,22 +136,16 @@ CREATE TABLE [PANINI_GDD].[BI_HECHOS_VENTAS](
 
     [TOTAL_VENTA] decimal(18,2) --NETO                   
 
-    --       [TOTAL_DESCUENTOS] decimal(18,2),
-    --       [MEDIO_ENVIO_COSTO] decimal(18,2),
-    --       [MEDIO_PAGO_COSTO] decimal(18,2),
-    --       [CANAL_VENTA_COSTO] decimal(18,2),
-
-
 	PRIMARY KEY ([ID_FECHA],[CODIGO_PROVINCIA],[ID_RANGO_ETARIO], [ID_CANAL_VENTA],[ID_MEDIO_PAGO],[ID_CATEGORIA], [COD_PROD],[ID_MEDIO_ENVIO])
 );
 GO
 
 
 CREATE TABLE [PANINI_GDD].[BI_HECHOS_DESCUENTOS]( --de ventas
-    [ID_TIPO_DESCUENTO] decimal(19,0), --FK
-    [ID_FECHA] DECIMAL(19,0), --fk
-	[ID_CANAL_VENTA] decimal(19,0), --fk
-    [TOTAL_DESCUENTO] DECIMAL(18,2),
+  [ID_TIPO_DESCUENTO] decimal(19,0), --FK
+  [ID_FECHA] DECIMAL(19,0), --fk
+  [ID_CANAL_VENTA] decimal(19,0), --fk
+  [TOTAL_DESCUENTO] DECIMAL(18,2),
 	PRIMARY KEY ( [ID_TIPO_DESCUENTO],[ID_FECHA],[ID_CANAL_VENTA])
 );
 GO
@@ -249,7 +236,7 @@ GO
 CREATE PROCEDURE [PANINI_GDD].cargar_categorias_prod AS
     BEGIN
         INSERT INTO [PANINI_GDD].BI_DIM_CATEGORIA_PRODUCTO (ID_CATEGORIA,CATEGORIA) 
-        SELECT ID_CATEGORIA,CATEGORIA FROM [PANINI_GDD].[CATEGORIA] --mal, estan las marcas guardadas ahi (corregido en datos pero no en la base actual)
+        SELECT ID_CATEGORIA,CATEGORIA FROM [PANINI_GDD].[CATEGORIA]
     END
 GO
 
@@ -290,32 +277,27 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
       DECLARE comc CURSOR FOR 
 	    SELECT FECHA_COMPRA,ID_MEDIO_PAGO,CUIT_PROV,COD_COMPRA FROM [PANINI_GDD].COMPRA
       OPEN comc
-      FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@cuit,@codCompra --,@totalCompra
+      FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@cuit,@codCompra 
       WHILE(@@FETCH_STATUS = 0)
       BEGIN
-        -- DECLARE @descuentos decimal(18,2)
-        -- SET @descuentos = (SELECT SUM(MONTO_DESC_COMPRA) FROM [PANINI_GDD].COMPRA c
-        -- JOIN [PANINI_GDD].DESCUENTO_X_COMPRA dc ON c.COD_COMPRA=dc.COD_COMPRA
-        -- JOIN [PANINI_GDD].DESCUENTO_COMPRA d ON d.CODIGO_DESC_COMPRA=dc.CODIGO_DESC_COMPRA
-        -- WHERE c.COD_COMPRA=@codCompra)
 
         DECLARE @cantidad decimal(19,0),@precioUnit decimal(18,2),@precioTotalProd decimal(18,2),@codigoProductoVar nvarchar(50)
         DECLARE comcp CURSOR FOR SELECT CANTIDAD,PRECIO_UNIT,PRECIO_TOTAL,COD_PRODUCTO_VARIANTE FROM [PANINI_GDD].COMPRA_PRODUCTO WHERE COD_COMPRA=@codCompra
         OPEN comcp
 		    FETCH NEXT FROM comcp INTO @cantidad,@precioUnit,@precioTotalProd,@codigoProductoVar
         WHILE(@@FETCH_STATUS = 0)
-        BEGIN --si no existe el producto ponerlo y sino sumarle al total prod
+        BEGIN 
           IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_COMPRAS WHERE ID_FECHA = [PANINI_GDD].obtener_id_tiempo(@fechaCompra) 
           AND ID_PROVEEDOR = @cuit AND COD_PROD = [PANINI_GDD].obtener_codigo_producto(@codigoProductoVar))
           BEGIN
-            INSERT INTO [PANINI_GDD].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO) --,TOTAL_COMPRA,TOTAL_DESCUENTO)
+            INSERT INTO [PANINI_GDD].BI_HECHOS_COMPRAS (ID_FECHA,ID_PROVEEDOR,COD_PROD,TOTAL_PRODUCTO,CANTIDAD_PRODUCTO)
             VALUES ([PANINI_GDD].obtener_id_tiempo(@fechaCompra),@cuit,[PANINI_GDD].obtener_codigo_producto(@codigoProductoVar),
-            @precioTotalProd,@cantidad) --,@totalCompra,@descuentos)
+            @precioTotalProd,@cantidad)
           END
           ELSE
           BEGIN
             UPDATE [PANINI_GDD].BI_HECHOS_COMPRAS 
-            SET CANTIDAD_PRODUCTO+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd --,TOTAL_COMPRA+=@precioTotalProd
+            SET CANTIDAD_PRODUCTO+=@cantidad,TOTAL_PRODUCTO+=@precioTotalProd
             WHERE ID_FECHA = [PANINI_GDD].obtener_id_tiempo(@fechaCompra) 
             AND ID_PROVEEDOR = @cuit AND COD_PROD = [PANINI_GDD].obtener_codigo_producto(@codigoProductoVar)
           END
@@ -323,7 +305,7 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
         END
         CLOSE comcp
         DEALLOCATE comcp
-        FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@cuit,@codCompra --,@totalCompra
+        FETCH NEXT FROM comc INTO @fechaCompra, @medioPagoId,@cuit,@codCompra
       END
       CLOSE comc
       DEALLOCATE comc
@@ -393,8 +375,7 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
             [PANINI_GDD].obtener_id_rango_etario((SELECT FECHA_NAC_CLIENTE FROM CLIENTE WHERE ID_CLIENTE=@idCliente)),
             @idCanalVenta,@idMedioPago,[PANINI_GDD].obtener_id_categoria(@codProdVar),[PANINI_GDD].obtener_codigo_producto(@codProdVar),
             @idMedioEnvio,@cantidad,@precioTotalProd,@totalVenta)
-            --@totalVenta, @totalDescuento,@precioEnvio,@costoTransaccion,@canalCosto,
-          END --descuento TODO leer arriba
+          END
           ELSE
           BEGIN
             UPDATE [PANINI_GDD].BI_HECHOS_VENTAS
@@ -646,8 +627,6 @@ AS
 
 GO
 
---     ANDA BIEN
-
 
 -- Los 5 productos con mayor rentabilidad anual, con sus respectivos %
 -- Se entiende por rentabilidad a los ingresos generados por el producto
@@ -670,9 +649,7 @@ GO
 -- Las 5 categorías de productos más vendidos por rango etario de clientes
 -- por mes.
 
-
---Existen solo Tres CATEGORIAS por eso el ranking da solo 3.
-CREATE VIEW [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes (RANGO_ETARIO,CATEGORIA,MES,ANIO,CANTIDAD_PRODUCTO,RANKING) --cuando se haga el select de la vista poner where ranking <= 5
+CREATE VIEW [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes (RANGO_ETARIO,CATEGORIA,MES,ANIO,CANTIDAD_PRODUCTO,RANKING)
 AS
   SELECT 
   r.RANGO_ETARIO,
@@ -782,9 +759,10 @@ AS
     GROUP BY p.RAZON_SOCIAL_PROV, f.ANIO
 GO  
 
--- ANDA BIEN
+
 
 -- Los 3 productos con mayor cantidad de reposición por mes.
+
 CREATE VIEW [PANINI_GDD].top_3_prod_mayor_reposicion_x_mes (PRODUCTO,MES,ANIO,CANTIDAD_COMPRADA,RANKING) 
 AS
   
@@ -800,15 +778,13 @@ AS
   
 GO
 
--- ANDA BIEN ESTARIA BUENO PODER ORDENARLO DESDE LA VISTA POR MES Y RANKIN Y CHEKEAKEAR LO DEL WHERE EN LA LLAMADA D ELA VISTA.
-
 -- SELECT DE LAS VISTAS
 
 SELECT * FROM [PANINI_GDD].ganancias_mensuales_x_canal_venta
 
 SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad
 
-SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 
+SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 --Existen solo Tres CATEGORIAS por eso el ranking da hasta 3.
 
 SELECT * FROM [PANINI_GDD].total_ingresos_medio_pago_x_mes
 
