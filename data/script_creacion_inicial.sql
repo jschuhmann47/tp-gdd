@@ -1,4 +1,6 @@
-USE [GD2C2022]
+
+
+USE [finalpruebatp]
 GO
 
 CREATE SCHEMA PANINI_GDD
@@ -50,8 +52,6 @@ CREATE TABLE [PANINI_GDD].[PROVEEDOR] (
   [CODIGO_PROVINCIA] decimal(19,0),
   PRIMARY KEY ([CUIT_PROV])
 );
-
-
 
 CREATE TABLE [PANINI_GDD].[CLIENTE] (
   [ID_CLIENTE] decimal(19,0) IDENTITY (1,1),
@@ -235,7 +235,7 @@ CREATE TABLE [PANINI_GDD].[VENTA] (
   [PRECIO_ENVIO] decimal(18,2),
   [CANAL_COSTO] decimal(19,0),
   [COSTO_TRANSACCION] decimal(18,2),
-  PRIMARY KEY ([COD_VENTA])
+  PRIMARY KEY (COD_VENTA)
 );
 
 --Alters
@@ -516,7 +516,7 @@ BEGIN
 	FROM gd_esquema.Maestra
 	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
 
-	INSERT INTO PANINI_GDD.MEDIO_DE_PAGO (MEDIO_PAGO,VALOR_DESC,COSTO_TRANSACCION)
+	UNION
 	SELECT DISTINCT VENTA_MEDIO_PAGO,0,VENTA_MEDIO_PAGO_COSTO
 	FROM gd_esquema.Maestra
 	WHERE VENTA_MEDIO_PAGO IS NOT NULL AND VENTA_DESCUENTO_CONCEPTO!='Otros'
@@ -680,49 +680,80 @@ END
 
 GO
 
-CREATE PROCEDURE [PANINI_GDD].insertar_ventas
+
+CREATE PROCEDURE [PANINI_GDD].insertar_ventas 
+AS
+BEGIN 
+		
+		SELECT maestra.VENTA_CODIGO, maestra.VENTA_FECHA, maestra.CLIENTE_PROVINCIA,
+		maestra.CLIENTE_CODIGO_POSTAL, maestra.VENTA_MEDIO_PAGO, 
+		maestra. VENTA_MEDIO_PAGO_COSTO, maestra.VENTA_DESCUENTO_IMPORTE, maestra.VENTA_TOTAL,
+		maestra.VENTA_MEDIO_ENVIO, maestra.VENTA_ENVIO_PRECIO, maestra.VENTA_CANAL_COSTO,
+		maestra.VENTA_CANAL, maestra.CLIENTE_NOMBRE, maestra.CLIENTE_APELLIDO,
+		maestra.CLIENTE_DNI, maestra.CLIENTE_DIRECCION
+		INTO [PANINI_GDD].#MEDIO_PAGO_VENTAS FROM [gd_esquema].[Maestra] maestra
+		WHERE VENTA_CODIGO IS NOT NULL
+
+		UPDATE [PANINI_GDD].#MEDIO_PAGO_VENTAS SET VENTA_DESCUENTO_IMPORTE = 0 WHERE VENTA_DESCUENTO_IMPORTE IS NULL
+		
+		SELECT DISTINCT maestra.VENTA_CODIGO, maestra.VENTA_FECHA, cliente.ID_CLIENTE, canalDeVenta.ID_CANAL_VENTA, medioDeEnvio.ID_MEDIO_ENVIO,  (SELECT top 1 r.ID_MEDIO_PAGO FROM [PANINI_GDD].[MEDIO_DE_PAGO] r WHERE r.ID_MEDIO_PAGO = medioDePago.ID_MEDIO_PAGO ) ID_MEDIO_PAGO,
+		maestra.VENTA_TOTAL, maestra.VENTA_ENVIO_PRECIO, maestra.VENTA_CANAL_COSTO, maestra.VENTA_MEDIO_PAGO_COSTO INTO [PANINI_GDD].#PREVENTA FROM [PANINI_GDD].#MEDIO_PAGO_VENTAS maestra
+		INNER JOIN [PANINI_GDD].[PROVINCIA]  provincia
+		ON provincia.NOMBRE_PROV = maestra.CLIENTE_PROVINCIA
+		INNER JOIN [PANINI_GDD].[CODIGO_POSTAL] codigoPostal
+		ON (codigoPostal.[CODIGO_POSTAL] = maestra.CLIENTE_CODIGO_POSTAL AND codigoPostal.[CODIGO_PROVINCIA] = provincia.CODIGO_PROVINCIA)
+		INNER JOIN [PANINI_GDD].[MEDIO_DE_PAGO] medioDePago
+		ON  maestra.VENTA_MEDIO_PAGO = medioDePago.[MEDIO_PAGO] AND maestra.VENTA_MEDIO_PAGO_COSTO = medioDePago.[COSTO_TRANSACCION] AND maestra.VENTA_DESCUENTO_IMPORTE = medioDePago.VALOR_DESC 
+		INNER JOIN [PANINI_GDD].[MEDIO_ENVIO_X_CODIGO_POSTAL] medioDeEnvio
+		ON maestra.VENTA_MEDIO_ENVIO = medioDeEnvio.[MEDIO] AND maestra.VENTA_ENVIO_PRECIO = medioDeEnvio.[PRECIO] AND medioDeEnvio.[CODIGO_POSTAL] = codigoPostal.[CODIGO_POSTAL]
+		INNER JOIN [PANINI_GDD].[canal_venta] canalDeVenta
+		ON maestra.VENTA_CANAL_COSTO = canalDeVenta.[CANAL_COSTO] AND maestra.VENTA_CANAL = canalDeVenta.[CANAL_VENTA]
+		INNER JOIN [PANINI_GDD].[cliente] cliente
+		ON	maestra.CLIENTE_NOMBRE	= cliente.NOMBRE_CLIENTE AND maestra.CLIENTE_APELLIDO = cliente.APELLIDO_CLIENTE AND maestra.CLIENTE_DNI = cliente.DNI_CLIENTE AND maestra.CLIENTE_DIRECCION = cliente.DIRECCION_CLIENTE
+		
+
+declare @vc decimal(19,0)
+declare @mp decimal(19,0)
+declare mpcursor cursor for (select VENTA_CODIGO,ID_MEDIO_PAGO from [PANINI_GDD].#PREVENTA )
+open mpcursor
+fetch next from mpcursor into @vc,@mp
+while(@@FETCH_STATUS=0)
+begin
+	if( (select COUNT(ID_MEDIO_PAGO) from [PANINI_GDD].#PREVENTA where VENTA_CODIGO = @vc) > 1)
+	begin
+		if(( select VALOR_DESC from  [PANINI_GDD].[MEDIO_DE_PAGO] where ID_MEDIO_PAGO = @mp ) = 0.00 )
+			begin	
+				delete from [PANINI_GDD].#PREVENTA where VENTA_CODIGO=@vc AND ID_MEDIO_PAGO = @mp	
+			end
+	end
+fetch next from mpcursor into @vc,@mp
+end
+close mpcursor
+deallocate mpcursor
+
+	INSERT INTO [PANINI_GDD].VENTA 	
+		( COD_VENTA, FECHA_VENTA, ID_CLIENTE, ID_CANAL_VENTA, ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO, CANAL_COSTO, COSTO_TRANSACCION) 
+		SELECT * FROM #PREVENTA
+
+END
+GO
+
+
+CREATE PROCEDURE [PANINI_GDD].insertar_venta_mediante_cupon
 AS
 BEGIN
-  DECLARE @codVenta decimal(19,0), @fecha date, @clienteDni decimal(19,0), @canalVenta nvarchar(255), @medioEnvio nvarchar(255)
-  ,@medioPago nvarchar(255), @totalVenta decimal(18,2), @precioEnvio decimal(18,2),@cuponCod nvarchar(255),
-  @cuponImporte decimal(18,2),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2),@codPostal decimal (19,0), 
-  @envioPrecio decimal(18,2),@nombre nvarchar(255),@apellido nvarchar(255),@canalCosto decimal(18,2)
-  DECLARE cursorvs SCROLL CURSOR FOR
-  SELECT DISTINCT VENTA_CODIGO, VENTA_FECHA, CLIENTE_DNI, VENTA_CANAL, VENTA_MEDIO_ENVIO, VENTA_MEDIO_PAGO, VENTA_TOTAL, 
-  VENTA_ENVIO_PRECIO,VENTA_CUPON_CODIGO,VENTA_CUPON_IMPORTE,VENTA_DESCUENTO_CONCEPTO,VENTA_DESCUENTO_IMPORTE,CLIENTE_CODIGO_POSTAL, VENTA_ENVIO_PRECIO,CLIENTE_NOMBRE,CLIENTE_APELLIDO,VENTA_CANAL_COSTO
-  FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL
-  OPEN cursorvs
-  FETCH NEXT FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
-  @cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
-  WHILE(@@FETCH_STATUS = 0)
-  BEGIN
-	
-		IF NOT EXISTS (SELECT 1 FROM PANINI_GDD.VENTA WHERE COD_VENTA=@codVenta)
-		BEGIN
-		INSERT INTO PANINI_GDD.VENTA (COD_VENTA, FECHA_VENTA, ID_CLIENTE , ID_CANAL_VENTA ,ID_MEDIO_ENVIO, ID_MEDIO_PAGO, TOTAL_VENTA, PRECIO_ENVIO, CANAL_COSTO, COSTO_TRANSACCION)
-				VALUES (@codVenta, @fecha, (SELECT ID_CLIENTE FROM PANINI_GDD.CLIENTE WHERE DNI_CLIENTE=@clienteDni AND NOMBRE_CLIENTE=@nombre AND APELLIDO_CLIENTE=@apellido), 
-					(SELECT ID_CANAL_VENTA FROM PANINI_GDD.CANAL_VENTA WHERE CANAL_VENTA=@canalVenta),
-					(SELECT ID_MEDIO_ENVIO FROM PANINI_GDD.MEDIO_ENVIO_X_CODIGO_POSTAL WHERE MEDIO=@medioEnvio AND CODIGO_POSTAL=@codPostal AND PRECIO=@envioPrecio), 
-					[PANINI_GDD].obtener_id_medio_pago(@codVenta),
-					@totalVenta, 
-					@precioEnvio,
-					@canalCosto,
-					(SELECT COSTO_TRANSACCION FROM PANINI_GDD.MEDIO_DE_PAGO WHERE ID_MEDIO_PAGO=[PANINI_GDD].obtener_id_medio_pago(@codVenta)))
 
-		END
-		IF @cuponCod IS NOT NULL
-		BEGIN
-			INSERT INTO PANINI_GDD.VENTA_MEDIANTE_CUPON (COD_VENTA, CODIGO_CUPON, IMPORTE)
-			VALUES (@codVenta, @cuponCod, @cuponImporte)
-		END
-		FETCH NEXT FROM cursorvs INTO @codVenta, @fecha, @clienteDni, @canalVenta, @medioEnvio, @medioPago, @totalVenta, @precioEnvio,@cuponCod,
-		@cuponImporte,@descuentoConcepto,@descuentoValor,@codPostal,@envioPrecio,@nombre,@apellido,@canalCosto
-  	END
-  CLOSE cursorvs
-  DEALLOCATE cursorvs
+INSERT INTO PANINI_GDD.VENTA_MEDIANTE_CUPON (COD_VENTA,CODIGO_CUPON,IMPORTE)
+    SELECT DISTINCT VENTA_CODIGO,VENTA_CUPON_CODIGO,
+    CASE
+   	 WHEN VENTA_CUPON_VALOR <= 1 THEN VENTA_CUPON_VALOR*VENTA_TOTAL --PORCENTUAL
+   	 WHEN VENTA_CUPON_VALOR > 1 THEN VENTA_CUPON_VALOR
+    END IMPORTE
+    FROM gd_esquema.Maestra WHERE VENTA_CODIGO IS NOT NULL AND VENTA_CUPON_CODIGO IS NOT NULL
+
 END
-
 GO
+
 
 CREATE PROCEDURE [PANINI_GDD].insertar_descuentos_fijos_de_ventas
 AS
@@ -765,27 +796,29 @@ BEGIN
 	
 	BEGIN TRY
 		BEGIN TRANSACTION
-		exec [PANINI_GDD].insertar_proveedor
-		exec [PANINI_GDD].insertar_marca_categoria_y_material
-		exec [PANINI_GDD].insertar_productos
-		exec [PANINI_GDD].insertar_canales_venta
-		exec [PANINI_GDD].insertar_variantes
-		exec [PANINI_GDD].insertar_clientes
+		exec [PANINI_GDD].insertar_proveedor -- 0 segundos
+		exec [PANINI_GDD].insertar_marca_categoria_y_material --  -- 0 segundos
+		exec [PANINI_GDD].insertar_productos  --  0 segundos
+		exec [PANINI_GDD].insertar_canales_venta -- 0 segundos
+		exec [PANINI_GDD].insertar_variantes -- 0 segundos
+		exec [PANINI_GDD].insertar_clientes -- 0 segundos
 		
-		exec [PANINI_GDD].insertar_medio_envio_x_codigo_postal
-		exec [PANINI_GDD].insertar_descuentos_cupon
-		exec [PANINI_GDD].insertar_descuentos_fijo
-		exec [PANINI_GDD].insertar_medios_de_pago 
-		exec [PANINI_GDD].insertar_descuentos_compra
-		exec [PANINI_GDD].insertar_descuentos_x_medio_de_pago 
-		exec [PANINI_GDD].insertar_producto_variante
+		exec [PANINI_GDD].insertar_medio_envio_x_codigo_postal --  0 segundos
+		exec [PANINI_GDD].insertar_descuentos_cupon -- 0 segundos
+		exec [PANINI_GDD].insertar_descuentos_fijo -- 0 segundos
+		exec [PANINI_GDD].insertar_medios_de_pago  -- 0 segundos 
+		exec [PANINI_GDD].insertar_descuentos_compra -- 0 segundos
+		exec [PANINI_GDD].insertar_descuentos_x_medio_de_pago  -- 1 segundos
+		exec [PANINI_GDD].insertar_producto_variante -- 1 segundos
 		
-		exec [PANINI_GDD].insertar_compras 
-		exec [PANINI_GDD].insertar_compra_producto
+		exec [PANINI_GDD].insertar_compras  -- 0 segundos
+		exec [PANINI_GDD].insertar_compra_producto -- 6 segundos
 		
-		exec [PANINI_GDD].insertar_ventas 
-		exec [PANINI_GDD].insertar_venta_producto
-		EXEC [PANINI_GDD].insertar_descuentos_fijos_de_ventas
+		exec [PANINI_GDD].insertar_ventas  --  Ahora: 1 minuto 19 segundos, Antes: 13 minutos 43 segundos,
+		
+		exec [PANINI_GDD].insertar_venta_mediante_cupon -- 0 SEGUNDOS
+		exec [PANINI_GDD].insertar_venta_producto -- 4 segundos
+		exec [PANINI_GDD].insertar_descuentos_fijos_de_ventas -- 3 segundos
 		
 		COMMIT TRANSACTION
 	END TRY
@@ -806,5 +839,3 @@ END
 GO
 
 exec [PANINI_GDD].insertar_todo
-
-
