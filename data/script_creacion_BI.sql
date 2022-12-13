@@ -312,8 +312,7 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
     END
 GO
 
-
-DROP PROCEDURE [PANINI_GDD].cargar_ventas
+--DROP PROCEDURE [PANINI_GDD].cargar_ventas
 
 CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
     BEGIN
