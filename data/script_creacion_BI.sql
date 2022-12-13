@@ -312,9 +312,6 @@ CREATE PROCEDURE [PANINI_GDD].cargar_compras AS
     END
 GO
 
-
-DROP PROCEDURE [PANINI_GDD].cargar_ventas
-
 CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
     BEGIN
       DECLARE @codVenta decimal(19,0),@fecha DATE,@idCliente decimal(19,0),@idCanalVenta decimal(19,0),@idMedioEnvio decimal(19,0),
