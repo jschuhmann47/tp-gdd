@@ -403,10 +403,11 @@ CREATE PROCEDURE [PANINI_GDD].cargar_ventas AS
         [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idCanalVenta,[PANINI_GDD].obtener_ganancias_canal_venta(DATEPART(MONTH,@fecha),DATEPART(YEAR,@fecha), @idCanalVenta)) 
         
         IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].BI_HECHOS_MEDIO_PAGO WHERE ID_FECHA=[PANINI_GDD].obtener_id_tiempo(@fecha) 
-        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio))
+        AND CODIGO_PROVINCIA=[PANINI_GDD].obtener_id_provincia(@idMedioEnvio) AND ID_MEDIO_PAGO=@idMedioPago)
         INSERT INTO [PANINI_GDD].BI_HECHOS_MEDIO_PAGO (ID_FECHA,CODIGO_PROVINCIA,ID_MEDIO_PAGO,MEDIO_PAGO_COSTO,TOTAL_GANANCIA_MES)
         VALUES ([PANINI_GDD].obtener_id_tiempo(@fecha),
         [PANINI_GDD].obtener_id_provincia(@idMedioEnvio),@idMedioPago,@costoTransaccion,[PANINI_GDD].obtener_ganancias_medio_pago(DATEPART(MONTH,@fecha),DATEPART(YEAR,@fecha),@idMedioPago))
+
 
         FETCH NEXT FROM cven INTO @codVenta,@fecha,@idCliente,@idCanalVenta,@idMedioEnvio,
         @idMedioPago ,@precioEnvio ,@costoTransaccion, @totalVenta 
@@ -682,24 +683,27 @@ GO
 
 CREATE VIEW [PANINI_GDD].total_ingresos_medio_pago_x_mes (MEDIO_PAGO,MES,ANIO,TOTAL_INGRESOS)
 AS
- SELECT 
+
+ SELECT DISTINCT
 	p.MEDIO_PAGO,
     MES,
     ANIO,
-    mp.TOTAL_GANANCIA_MES
+    SUM(mp.TOTAL_GANANCIA_MES) TOTAL_INGRESOS
     FROM [PANINI_GDD].BI_HECHOS_MEDIO_PAGO mp
     JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON ( t.ID_FECHA = mp.ID_FECHA)
 	JOIN [PANINI_GDD].BI_DIM_MEDIO_PAGO p ON ( p.ID_MEDIO_PAGO = mp.ID_MEDIO_PAGO ) 
+	GROUP BY p.MEDIO_PAGO,MES,ANIO
+	--ORDER BY ANIO,MES
 GO
 
 -- Importe total en descuentos aplicados según su tipo de descuento, por
 -- canal de venta, por mes. Se entiende por tipo de descuento como los
 -- correspondientes a envío, medio de pago, cupones, etc)
 
-CREATE VIEW [PANINI_GDD].importe_total_segun_descuento (IMPORTE_TOTAL, TIPO_DE_DESCUENTO, CANAL_DE_VENTA, MES)
+CREATE VIEW [PANINI_GDD].importe_total_segun_descuento (TIPO_DE_DESCUENTO, CANAL_DE_VENTA, MES, ANIO,IMPORTE_TOTAL)
 AS
   
-    SELECT SUM(descuento.TOTAL_DESCUENTO), tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES 
+    SELECT tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES, fecha.ANIO,SUM(descuento.TOTAL_DESCUENTO)
 
     FROM [PANINI_GDD].[BI_HECHOS_DESCUENTOS] descuento
     JOIN [PANINI_GDD].[BI_DIM_TIPO_DESCUENTO] tipo ON (descuento.ID_TIPO_DESCUENTO = tipo.ID_TIPO_DESCUENTO)
@@ -707,7 +711,7 @@ AS
     JOIN [PANINI_GDD].[BI_DIM_CANAL_VENTA] canal_venta ON (descuento.ID_CANAL_VENTA = canal_venta.ID_CANAL_VENTA)
     JOIN [PANINI_GDD].[BI_DIM_TIEMPO] fecha ON (fecha.ID_FECHA = descuento.ID_FECHA)
 
-    GROUP BY tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES
+    GROUP BY tipo.TIPO_DESCUENTO, canal_venta.CANAL_VENTA, fecha.MES, fecha.ANIO
 GO  
 
 
@@ -739,17 +743,16 @@ GO
 
 CREATE VIEW [PANINI_GDD].valor_promedio_envio_por_medio_por_provincia_anual (ANIO, MEDIO_DE_ENVIO,PROVINCIA, VALOR_PROMEDIO)
 AS
-  
-    SELECT t.ANIO, e.MEDIO, p.NOMBRE_PROV, 
-    (SELECT SUM(MEDIO_ENVIO_COSTO)/COUNT(ID_MEDIO_ENVIO) FROM [PANINI_GDD].[BI_HECHOS_VENTAS])
-    FROM [PANINI_GDD].[BI_HECHOS_ENVIO] v 
-    JOIN [PANINI_GDD].[BI_DIM_TIEMPO] t ON v.ID_FECHA = t.ID_FECHA
-    JOIN [PANINI_GDD].[BI_DIM_TIPO_ENVIO] e ON v.ID_MEDIO_ENVIO = e.ID_MEDIO_ENVIO
-	JOIN [PANINI_GDD].BI_DIM_PROVINCIA p ON p.CODIGO_PROVINCIA=v.CODIGO_PROVINCIA
-    GROUP BY t.ANIO, e.MEDIO, p.NOMBRE_PROV
+
+    SELECT t.ANIO, te.MEDIO, p.NOMBRE_PROV, 
+    SUM(MEDIO_ENVIO_COSTO)/COUNT(e.ID_MEDIO_ENVIO) VALOR_PROMEDIO
+    FROM [PANINI_GDD].[BI_HECHOS_ENVIO] e 
+    JOIN [PANINI_GDD].[BI_DIM_TIEMPO] t ON e.ID_FECHA = t.ID_FECHA
+    JOIN [PANINI_GDD].[BI_DIM_TIPO_ENVIO] te ON e.ID_MEDIO_ENVIO = te.ID_MEDIO_ENVIO
+	JOIN [PANINI_GDD].BI_DIM_PROVINCIA p ON p.CODIGO_PROVINCIA=e.CODIGO_PROVINCIA
+	JOIN [PANINI_GDD].BI_HECHOS_VENTAS v ON v.ID_MEDIO_ENVIO=e.ID_MEDIO_ENVIO
+    GROUP BY t.ANIO, te.MEDIO, p.NOMBRE_PROV
 GO
-
-
 
 -- Aumento promedio de precios de cada proveedor anual. Para calcular este
 -- indicador se debe tomar como referencia el máximo precio por año menos
@@ -788,25 +791,34 @@ GO
 
 -- SELECT DE LAS VISTAS
 
-SELECT * FROM [PANINI_GDD].ganancias_mensuales_x_canal_venta
+SELECT * FROM [PANINI_GDD].ganancias_mensuales_x_canal_venta --ANDA
 
-SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad WHERE RANKING <= 5
+SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad WHERE RANKING <= 5 --ANDA
 
 SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 
 --Existen solo Tres CATEGORIAS por eso el ranking da hasta 3.
---revisar q no haya clientes <25
+--revisar q no haya clientes <25: chequeado: no hay menores a 25, dejo select abajo
+--select DNI_CLIENTE,FECHA_NAC_CLIENTE,(DATEDIFF(DAY,FECHA_NAC_CLIENTE, GETDATE()) / 365) from PANINI_GDD.CLIENTE WHERE (DATEDIFF(DAY,FECHA_NAC_CLIENTE, GETDATE()) / 365) <30
 
 SELECT * FROM [PANINI_GDD].total_ingresos_medio_pago_x_mes order by MES,ANIO
---faltan datos chequear
+--ANDA
 
 SELECT * FROM [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes order by MES,ANIO
+--ANDA
 
 SELECT * FROM [PANINI_GDD].importe_total_segun_descuento
---falta agregar el año
+--falta agregar el año: hecho. ANDA
 
 SELECT * FROM [PANINI_GDD].valor_promedio_envio_por_medio_por_provincia_anual
 -- dan valores bajos chequear si hay muchos envios gratis (si tiene sentido)
+-- en CABA no hay envios por moto:
+--select distinct COD_VENTA,m.MEDIO,p.NOMBRE_PROV from PANINI_GDD.VENTA v join PANINI_GDD.MEDIO_ENVIO_X_CODIGO_POSTAL m on v.ID_MEDIO_ENVIO=m.ID_MEDIO_ENVIO 
+--join PANINI_GDD.CLIENTE c on c.ID_CLIENTE=v.ID_CLIENTE
+--join PANINI_GDD.PROVINCIA p on p.CODIGO_PROVINCIA=c.CODIGO_PROVINCIA
+--where m.MEDIO='Moto' and p.NOMBRE_PROV='Capital Federal'
 
 SELECT * FROM [PANINI_GDD].aumento_promedio_precios_x_proveedor_anual
+--ANDA
 
 SELECT * FROM [PANINI_GDD].top_3_prod_mayor_reposicion_x_mes WHERE RANKING <= 3
+--ANDA
