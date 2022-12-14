@@ -466,17 +466,17 @@ CREATE FUNCTION [PANINI_GDD].obtener_id_tiempo(@fecha DATE) RETURNS DECIMAL(19,0
 GO
 
 
-CREATE FUNCTION [PANINI_GDD].obtener_rentabilidad_producto(@idProd nvarchar(50)) RETURNS DECIMAL(18,2) AS
+CREATE FUNCTION [PANINI_GDD].obtener_rentabilidad_producto(@idProd nvarchar(50),@anio INT) RETURNS DECIMAL(18,4) AS
   BEGIN
-    DECLARE @rentabilidadVenta decimal(19,0),@rentabilidadCompra decimal(19,0)
+    DECLARE @rentabilidadVenta decimal(18,2),@rentabilidadCompra decimal(18,2)
     SET @rentabilidadVenta = (SELECT SUM(v.TOTAL_PRODUCTO) FROM [PANINI_GDD].BI_HECHOS_VENTAS v 
     JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON v.ID_FECHA=t.ID_FECHA 
-    WHERE t.ANIO = YEAR(GETDATE()) AND v.COD_PROD=@idProd)
+    WHERE t.ANIO = @anio AND v.COD_PROD=@idProd)
     SET @rentabilidadCompra = (SELECT SUM(c.TOTAL_PRODUCTO) FROM [PANINI_GDD].BI_HECHOS_COMPRAS c 
     JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON c.ID_FECHA=t.ID_FECHA
-    WHERE t.ANIO = YEAR(GETDATE()) AND c.COD_PROD=@idProd)
+    WHERE t.ANIO = @anio AND c.COD_PROD=@idProd)
 
-    RETURN (@rentabilidadVenta-@rentabilidadCompra)/@rentabilidadVenta
+    RETURN ((@rentabilidadVenta-@rentabilidadCompra)/@rentabilidadVenta)*100
   END
 GO
 
@@ -633,12 +633,23 @@ GO
 -- Para simplificar, no es necesario tener en cuenta los descuentos aplicados.
 
 
-CREATE VIEW [PANINI_GDD].top_5_productos_x_rentabilidad (NOMBRE_PRODUCTO,RENTABILIDAD)
+CREATE VIEW [PANINI_GDD].top_5_productos_x_rentabilidad (NOMBRE_PRODUCTO,ANIO,RANKING,PORCENTAJE_RENTABILIDAD)
 AS
   
-  SELECT TOP 5 NOMBRE_PROD,[PANINI_GDD].obtener_rentabilidad_producto(COD_PROD) RENTABILIDAD
-  FROM [PANINI_GDD].BI_DIM_PRODUCTO
-  ORDER BY [PANINI_GDD].obtener_rentabilidad_producto(COD_PROD) DESC
+  SELECT NOMBRE_PROD,t.ANIO,
+  ROW_NUMBER() OVER (PARTITION BY t.ANIO ORDER BY (SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_PRODUCTO))/SUM(v.TOTAL_PRODUCTO)*100 DESC) AS RANKING,
+  (CONVERT (VARCHAR(100),(((SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_PRODUCTO))/SUM(v.TOTAL_PRODUCTO))*100))+'%') AS PORCENTAJE_RENTABILIDAD
+
+  FROM [PANINI_GDD].BI_HECHOS_VENTAS v
+
+  JOIN [PANINI_GDD].BI_DIM_TIEMPO t ON v.ID_FECHA=t.ID_FECHA
+  JOIN [PANINI_GDD].BI_HECHOS_COMPRAS c ON v.COD_PROD=c.COD_PROD AND v.ID_FECHA=c.ID_FECHA
+  JOIN [PANINI_GDD].BI_DIM_PRODUCTO p ON p.COD_PROD=v.COD_PROD
+  GROUP BY NOMBRE_PROD,t.ANIO
+  
+  
+--  ORDER BY t.ANIO,(SUM(v.TOTAL_PRODUCTO)-SUM(c.TOTAL_PRODUCTO))/SUM(v.TOTAL_PRODUCTO)*100 DESC
+  --SELECT DISTINCT NOMBRE_PROD FROM PANINI_GDD.BI_DIM_PRODUCTO --1310
   
 GO
 
@@ -779,17 +790,22 @@ GO
 
 SELECT * FROM [PANINI_GDD].ganancias_mensuales_x_canal_venta
 
-SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad
+SELECT * FROM [PANINI_GDD].top_5_productos_x_rentabilidad WHERE RANKING <= 5
 
-SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 --Existen solo Tres CATEGORIAS por eso el ranking da hasta 3.
+SELECT * FROM [PANINI_GDD].top_5_categorias_x_rango_etario_x_mes WHERE RANKING <= 5 
+--Existen solo Tres CATEGORIAS por eso el ranking da hasta 3.
+--revisar q no haya clientes <25
 
-SELECT * FROM [PANINI_GDD].total_ingresos_medio_pago_x_mes
+SELECT * FROM [PANINI_GDD].total_ingresos_medio_pago_x_mes order by MES,ANIO
+--faltan datos chequear
 
-SELECT * FROM [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes
+SELECT * FROM [PANINI_GDD].porcentaje_envio_realizado_provincia_x_mes order by MES,ANIO
 
 SELECT * FROM [PANINI_GDD].importe_total_segun_descuento
+--falta agregar el año
 
-SELECT * FROM [PANINI_GDD].valor_promedio_envio_por_medio_por_provincia_anual 
+SELECT * FROM [PANINI_GDD].valor_promedio_envio_por_medio_por_provincia_anual
+-- dan valores bajos chequear si hay muchos envios gratis (si tiene sentido)
 
 SELECT * FROM [PANINI_GDD].aumento_promedio_precios_x_proveedor_anual
 
