@@ -813,4 +813,3 @@ SELECT * FROM [PANINI_GDD].[valor_promedio_envio_por_medio_por_provincia_anual]
 SELECT * FROM [PANINI_GDD].[aumento_promedio_precios_x_proveedor_anual]
 
 SELECT * FROM [PANINI_GDD].[top_3_prod_mayor_reposicion_x_mes] WHERE RANKING <= 3
-
