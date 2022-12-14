@@ -441,7 +441,7 @@ CREATE FUNCTION [PANINI_GDD].[obtener_ganancias_medio_pago](@mes INT, @anio INT,
   BEGIN
     DECLARE @cant DECIMAL(18,2)
     SET @cant= (SELECT SUM(v.TOTAL_VENTA) 
-    FROM [PANINI_GDD].VENTA v 
+    FROM [PANINI_GDD].[VENTA] v 
     WHERE DATEPART(YEAR,v.FECHA_VENTA)=@anio AND DATEPART(MONTH,v.FECHA_VENTA)=@mes AND v.ID_MEDIO_PAGO=@idMedioPago)   
     RETURN @cant
   END
@@ -527,7 +527,7 @@ CREATE FUNCTION [PANINI_GDD].[obtener_ganancias_canal_venta](@mes INT, @anio INT
   BEGIN
     DECLARE @cant DECIMAL(18,2)
     SET @cant= (SELECT SUM(v.TOTAL_VENTA) 
-    FROM [PANINI_GDD].VENTA v 
+    FROM [PANINI_GDD].[VENTA] v 
     WHERE DATEPART(YEAR,v.FECHA_VENTA)=@anio AND DATEPART(MONTH,v.FECHA_VENTA)=@mes AND v.ID_CANAL_VENTA=@idCanalVenta)   
     RETURN @cant
   END
@@ -536,8 +536,8 @@ GO
 CREATE FUNCTION [PANINI_GDD].[obtener_id_provincia](@idMedioEnvio decimal(19,0)) RETURNS DECIMAL(19,0) AS
   BEGIN
   DECLARE @codProd DECIMAL(19,0)
-  SET @codProd = (SELECT cp.CODIGO_PROVINCIA FROM [PANINI_GDD].MEDIO_ENVIO_X_CODIGO_POSTAL m
-  JOIN [PANINI_GDD].CODIGO_POSTAL cp ON m.CODIGO_POSTAL=cp.CODIGO_POSTAL
+  SET @codProd = (SELECT cp.CODIGO_PROVINCIA FROM [PANINI_GDD].[MEDIO_ENVIO_X_CODIGO_POSTAL] m
+  JOIN [PANINI_GDD].[CODIGO_POSTAL] cp ON m.CODIGO_POSTAL=cp.CODIGO_POSTAL
   WHERE m.ID_MEDIO_ENVIO=@idMedioEnvio)
   RETURN @codProd
   END
@@ -546,8 +546,8 @@ GO
 CREATE FUNCTION [PANINI_GDD].[obtener_id_categoria](@codProdVar nvarchar(50))  RETURNS DECIMAL(19,0) AS
   BEGIN
   DECLARE @idCat decimal(19,0)
-  SET @idCat = (SELECT ID_CATEGORIA_PROD FROM [PANINI_GDD].PRODUCTO_VARIANTE pv
-  JOIN [PANINI_GDD].PRODUCTO p ON pv.COD_PROD=p.COD_PROD
+  SET @idCat = (SELECT ID_CATEGORIA_PROD FROM [PANINI_GDD].[PRODUCTO_VARIANTE] pv
+  JOIN [PANINI_GDD].[PRODUCTO] p ON pv.COD_PROD=p.COD_PROD
   WHERE pv.COD_PRODUCTO_VARIANTE=@codProdVar)
   RETURN @idCat
   END
@@ -571,16 +571,16 @@ BEGIN
 		BEGIN TRANSACTION
 		exec [PANINI_GDD].[cargar_tiempo]
 		exec [PANINI_GDD].[cargar_rangos_etarios]
-    exec [PANINI_GDD].[cargar_provincias]
-    exec [PANINI_GDD].[cargar_canales_venta]
-    exec [PANINI_GDD].[cargar_medios_pago]
-    exec [PANINI_GDD].[cargar_categorias_prod]
-    exec [PANINI_GDD].[cargar_productos]
-    exec [PANINI_GDD].[cargar_tipos_descuento]
-    exec [PANINI_GDD].[cargar_tipos_envio]
-    exec [PANINI_GDD].[cargar_proveedores]
-    exec [PANINI_GDD].[cargar_compras]
-    exec [PANINI_GDD].[cargar_ventas]
+		exec [PANINI_GDD].[cargar_provincias]
+		exec [PANINI_GDD].[cargar_canales_venta]
+		exec [PANINI_GDD].[cargar_medios_pago]
+		exec [PANINI_GDD].[cargar_categorias_prod]
+		exec [PANINI_GDD].[cargar_productos]
+		exec [PANINI_GDD].[cargar_tipos_descuento]
+		exec [PANINI_GDD].[cargar_tipos_envio]
+		exec [PANINI_GDD].[cargar_proveedores]
+		exec [PANINI_GDD].[cargar_compras]
+		exec [PANINI_GDD].[cargar_ventas]
 		COMMIT TRANSACTION
 	END TRY
 	BEGIN CATCH 
@@ -715,13 +715,12 @@ GO
 -- total de envío mensuales.
 
 
-
 CREATE VIEW [PANINI_GDD].[porcentaje_envio_realizado_provincia_x_mes](PROVINCIA, PORCENTAJE, MES, ANIO)
 AS
 
     SELECT p.NOMBRE_PROV,
 
-    CONVERT(VARCHAR(100),CONVERT(DECIMAL(18,3),[PANINI_GDD].[obtener_cant_ventas]_x_provincia(p.CODIGO_PROVINCIA) / [PANINI_GDD].[obtener_cant_ventas]_x_mes_y_anio(f.MES, f.ANIO)))+'%'
+    CONVERT(VARCHAR(100),CONVERT(DECIMAL(18,3),[PANINI_GDD].[obtener_cant_ventas_x_provincia](p.CODIGO_PROVINCIA) / [PANINI_GDD].[obtener_cant_ventas_x_mes_y_anio](f.MES, f.ANIO)))+'%'
     PORCENTAJE,
 	f.MES,
 	f.ANIO
