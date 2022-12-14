@@ -810,7 +810,7 @@ SELECT * FROM [PANINI_GDD].importe_total_segun_descuento
 --falta agregar el año: hecho. ANDA
 
 SELECT * FROM [PANINI_GDD].valor_promedio_envio_por_medio_por_provincia_anual
--- dan valores bajos chequear si hay muchos envios gratis (si tiene sentido)
+
 -- en CABA no hay envios por moto:
 --select distinct COD_VENTA,m.MEDIO,p.NOMBRE_PROV from PANINI_GDD.VENTA v join PANINI_GDD.MEDIO_ENVIO_X_CODIGO_POSTAL m on v.ID_MEDIO_ENVIO=m.ID_MEDIO_ENVIO 
 --join PANINI_GDD.CLIENTE c on c.ID_CLIENTE=v.ID_CLIENTE
