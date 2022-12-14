@@ -751,7 +751,7 @@ END
 GO
 
 
-CREATE PROCEDURE [PANINI_GDD].[insertar_descuentos_fijo]s_de_ventas
+CREATE PROCEDURE [PANINI_GDD].[insertar_descuentos_fijos_de_ventas]
 AS
 BEGIN
 	DECLARE @codVenta decimal(19,0),@descuentoConcepto nvarchar(255),@descuentoValor decimal(18,2)
@@ -778,29 +778,29 @@ BEGIN
 	
 	BEGIN TRY
 		BEGIN TRANSACTION
-		exec [PANINI_GDD].[insertar_proveedor] -- 0 segundos
-		exec [PANINI_GDD].[insertar_marca_categoria_y_material] --  -- 0 segundos
-		exec [PANINI_GDD].[insertar_productos]  --  0 segundos
-		exec [PANINI_GDD].[insertar_canales_venta] -- 0 segundos
-		exec [PANINI_GDD].[insertar_variantes] -- 0 segundos
-		exec [PANINI_GDD].[insertar_clientes] -- 0 segundos
+		exec [PANINI_GDD].[insertar_proveedor]						-- 0 segundos
+		exec [PANINI_GDD].[insertar_marca_categoria_y_material]	    -- 0 segundos
+		exec [PANINI_GDD].[insertar_productos]						-- 0 segundos
+		exec [PANINI_GDD].[insertar_canales_venta]					-- 0 segundos
+		exec [PANINI_GDD].[insertar_variantes]						-- 0 segundos
+		exec [PANINI_GDD].[insertar_clientes]						-- 0 segundos
 		
-		exec [PANINI_GDD].[insertar_medio_envio_x_codigo_postal] --  0 segundos
-		exec [PANINI_GDD].[insertar_descuentos_cupon] -- 0 segundos
-		exec [PANINI_GDD].[insertar_descuentos_fijo] -- 0 segundos
-		exec [PANINI_GDD].[insertar_medios_de_pago]  -- 0 segundos 
-		exec [PANINI_GDD].[insertar_descuentos_compra] -- 0 segundos
-		exec [PANINI_GDD].[insertar_descuentos_x_medio_de_pago]  -- 1 segundos
-		exec [PANINI_GDD].[insertar_producto_variante] -- 1 segundos
+		exec [PANINI_GDD].[insertar_medio_envio_x_codigo_postal]	-- 0 segundos
+		exec [PANINI_GDD].[insertar_descuentos_cupon]				-- 0 segundos
+		exec [PANINI_GDD].[insertar_descuentos_fijo]				-- 0 segundos
+		exec [PANINI_GDD].[insertar_medios_de_pago]					-- 0 segundos 
+		exec [PANINI_GDD].[insertar_descuentos_compra]				-- 0 segundos
+		exec [PANINI_GDD].[insertar_descuentos_x_medio_de_pago]		-- 1 segundos
+		exec [PANINI_GDD].[insertar_producto_variante]				-- 1 segundos
 		
-		exec [PANINI_GDD].[insertar_compras]  -- 0 segundos
-		exec [PANINI_GDD].[insertar_compra_producto] -- 6 segundos
+		exec [PANINI_GDD].[insertar_compras]						-- 0 segundos
+		exec [PANINI_GDD].[insertar_compra_producto]				-- 6 segundos
 		
-		exec [PANINI_GDD].[insertar_ventas]  --  Ahora: 1 minuto 19 segundos, Antes: 13 minutos 43 segundos,
+		exec [PANINI_GDD].[insertar_ventas]							-- 1 minuto 23 segundos
 		
-		exec [PANINI_GDD].[insertar_venta_mediante_cupon] -- 0 SEGUNDOS
-		exec [PANINI_GDD].[insertar_venta_producto] -- 4 segundos
-		exec [PANINI_GDD].[insertar_descuentos_fijo]s_de_ventas -- 3 segundos
+		exec [PANINI_GDD].[insertar_venta_mediante_cupon]			-- 0 segundos
+		exec [PANINI_GDD].[insertar_venta_producto]					-- 4 segundos
+		exec [PANINI_GDD].[insertar_descuentos_fijos_de_ventas]		-- 3 segundos
 		
 		COMMIT TRANSACTION
 	END TRY
@@ -821,6 +821,5 @@ END
 GO
 
 exec [PANINI_GDD].[insertar_todo]
-
 
 
