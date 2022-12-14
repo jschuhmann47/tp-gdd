@@ -1,10 +1,6 @@
 USE [GD2C2022]
 GO
 
-CREATE SCHEMA [PANINI_GDD]
-
-GO
-
 
 CREATE TABLE  [PANINI_GDD].[MEDIO_DE_PAGO] (
   [ID_MEDIO_PAGO] decimal(19,0) IDENTITY (1,1),
@@ -560,7 +556,7 @@ END
 
 GO
 
-CREATE FUNCTION id_producto_variante(@variante nvarchar(50),@tipoVariante nvarchar(50))
+CREATE FUNCTION [PANINI_GDD].[id_producto_variante](@variante nvarchar(50),@tipoVariante nvarchar(50))
 RETURNS nvarchar(50)
 AS
 BEGIN
@@ -585,7 +581,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM [PANINI_GDD].[PRODUCTO_VARIANTE] WHERE CODIGO_VAR = @prodVarianteCod)
     BEGIN
       INSERT INTO [PANINI_GDD].[PRODUCTO_VARIANTE] (CODIGO_VAR,COD_PROD,COD_PRODUCTO_VARIANTE,STOCK,DESCRIPCION)
-      VALUES (dbo.id_producto_variante(@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion)
+      VALUES ([PANINI_GDD].[id_producto_variante](@variante,@tipoVariante),@prodCod,@prodVarianteCod,0,@descripcion)
     END
     ELSE
     BEGIN
@@ -821,5 +817,4 @@ END
 GO
 
 exec [PANINI_GDD].[insertar_todo]
-
 
