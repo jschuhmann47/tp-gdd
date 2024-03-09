@@ -1,9 +1,9 @@
-# TP Gestion de Datos
+# TP Gestión de Datos
 
-TP hecho en grupo para la materia Gestión de Datos, 2C 2022.
+Group assignment for the subject "Data Management" (Gestión de datos).
 
-El mismo consistía en migrar los datos de una única tabla completamente desnormalizada (por ejemplo se tenían todas juntas las ventas, compras, clientes, etc.) a un modelo normalizado (una tabla para cada entidad relevante).
+In this project we were asked to migrate a given database that wasn't normalized (all the data was in a single table) to a normalized one. The model was based on a clothes shop.
 
-La segunda parte pedía realizar un modelo de Business Intelligence (BI), donde había que hacer ciertos análisis de negocio sobre los datos previamente normalizados. Por ejemplo, se debía obtener el top 5 productos con mayor rentabilidad anual, o el promedio de precio de envío por medio de envío por mes y año. Para esto se crearon tablas de hechos y de dimensiones acordes para agilizar el proceso de obtención de esta información.
+The second part consisted in making a Business Intelligence model from our already normalized database, and making some analysis that were required. For example, the top 5 products with the most annual profit, or the average of delivery cost in each month and year. We used the STAR schema for this.
 
-Este TP fue hecho usando el lenguaje T-SQL con el motor SQL Server (version 2012).
+T-SQL with the SQL Server engine (2012 version) was used for the project.
